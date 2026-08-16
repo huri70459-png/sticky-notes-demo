@@ -103,3 +103,38 @@ def test_add_note_uses_selected_color(tmp_path: Path):
     app.set_color("cyan")
     app.add_note()
     assert app.store.all()[0].color == "cyan"
+
+
+# ---- Search tests ----
+
+def test_store_search_filters_by_text(tmp_path: Path):
+    """NoteStore.search should return notes whose text contains the query."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="buy milk", color="yellow")
+    store.add(id="2", text="call mom", color="pink")
+    store.add(id="3", text="milk powder", color="cyan")
+    results = store.search("milk")
+    assert len(results) == 2
+    assert {n.id for n in results} == {"1", "3"}
+
+
+def test_search_filter_updates_ui(tmp_path: Path):
+    """Setting search_var and calling apply_search should filter visible notes."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="1", text="buy milk", color="yellow")
+    store.add(id="2", text="call mom", color="pink")
+    app.search_var.set("milk")
+    app.apply_search()
+    assert app.filtered_count() == 1
+
+
+def test_search_empty_shows_all(tmp_path: Path):
+    """Empty search query should show all notes."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="1", text="a", color="yellow")
+    store.add(id="2", text="b", color="pink")
+    app.search_var.set("")
+    app.apply_search()
+    assert app.filtered_count() == 2

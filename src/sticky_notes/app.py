@@ -6,6 +6,9 @@ class NotesApp:
         self.store = store
         self.root = root if root is not None else tk.Tk()
         self.root.title("Sticky Notes")
+        self.current_color = "yellow"
+        self.search_var = tk.StringVar()
+        self._search_results: list | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -21,17 +24,32 @@ class NotesApp:
         self.add_button = tk.Button(self.form_frame, text="Add", command=self.add_note)
         self.add_button.pack(side="left", padx=(0, 8))
 
-        self.current_color = "yellow"
         for color in ("yellow", "pink", "cyan"):
             b = tk.Button(self.form_frame, text="", width=3, bg=color,
                           command=lambda c=color: self.set_color(c))
             b._color = True  # marker for test discovery
             b.pack(side="left", padx=2)
 
+        search_label = tk.Label(self.form_frame, text="Search:")
+        search_label.pack(side="left", padx=(16, 4))
+        search_entry = tk.Entry(self.form_frame, textvariable=self.search_var, width=15)
+        search_entry.pack(side="left", padx=(0, 8))
+        search_entry.bind("<KeyRelease>", lambda e: self.apply_search())
+
         self._refresh()
 
     def set_color(self, color: str) -> None:
         self.current_color = color
+
+    def apply_search(self) -> None:
+        query = self.search_var.get().strip()
+        self._search_results = self.store.search(query) if query else None
+        self._refresh()
+
+    def filtered_count(self) -> int:
+        if self._search_results is not None:
+            return len(self._search_results)
+        return self.note_count()
 
     def add_note(self) -> None:
         text = self.add_entry.get().strip()
@@ -43,7 +61,8 @@ class NotesApp:
     def _refresh(self) -> None:
         for widget in self.list_frame.winfo_children():
             widget.destroy()
-        for note in self.store.all():
+        notes = self._search_results if self._search_results is not None else self.store.all()
+        for note in notes:
             frame = tk.Frame(self.list_frame, relief="raised", bd=1)
 
             edit_entry = tk.Entry(frame, width=20, fg=note.color)

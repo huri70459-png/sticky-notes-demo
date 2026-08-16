@@ -13,6 +13,13 @@ class NoteStore:
         data = json.loads(self.path.read_text(encoding="utf-8"))
         return [Note(**n) for n in data]
 
+    def search(self, query: str) -> list[Note]:
+        """Return notes whose text contains the query (case-insensitive)."""
+        if not query:
+            return self.all()
+        q = query.lower()
+        return [n for n in self.all() if q in n.text.lower()]
+
     def add(self, *, id: str | None = None, text: str, color: str = "yellow") -> Note:
         notes = self.all()
         new_note = Note(
