@@ -2,65 +2,119 @@ import tkinter as tk
 from pathlib import Path
 from .store import NoteStore
 
+
+# Microsoft Sticky Notes color palette
+NOTE_COLORS = {
+    "yellow":  "#ffeb3b",
+    "blue":    "#4fc3f7",
+    "green":   "#81c784",
+    "pink":    "#f06292",
+    "lavender": "#ce93d8",
+    "cyan":    "#4dd0e1",
+}
+
+
 class NotesApp:
     def __init__(self, *, store: NoteStore, root: tk.Tk | None = None):
         self.store = store
         self.root = root if root is not None else tk.Tk()
         self.root.title("Sticky Notes")
+        self.root.configure(bg="#f3f3f3")
         self.current_color = "yellow"
         self.search_var = tk.StringVar()
         self._search_results: list | None = None
         self.dark_mode = False
         self.always_on_top = False
         self.alpha_var = tk.DoubleVar(value=1.0)
+        self._active_note_id: str | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
-        self.list_frame = tk.Frame(self.root)
-        self.list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Toolbar — top bar
+        self.toolbar = tk.Frame(self.root, bg="#ffffff", relief="flat",
+                                highlightbackground="#e0e0e0", highlightthickness=1)
+        self.toolbar.pack(fill="x", padx=12, pady=8)
 
-        self.form_frame = tk.Frame(self.root)
-        self.form_frame.pack(pady=8)
+        tk.Button(self.toolbar, text="+ New Note",
+                  command=self._focus_add_entry,
+                  font=("Segoe UI", 9, "normal"), bg="#ffffff",
+                  activebackground="#f0f0f0",
+                  relief="flat").pack(side="left", padx=(0, 8))
 
-        self.add_entry = tk.Entry(self.form_frame, width=30)
-        self.add_entry.pack(side="left", padx=(0, 8))
+        self.dark_mode_btn = tk.Button(self.toolbar, text="🌙",
+                                       command=self.toggle_dark_mode,
+                                       font=("Segoe UI", 10), width=3,
+                                       relief="flat", bg="#ffffff")
+        self.dark_mode_btn.pack(side="right", padx=(0, 8))
 
-        self.add_button = tk.Button(self.form_frame, text="Add", command=self.add_note)
-        self.add_button.pack(side="left", padx=(0, 8))
-
-        for color in ("yellow", "pink", "cyan"):
-            b = tk.Button(self.form_frame, text="", width=3, bg=color,
-                          command=lambda c=color: self.set_color(c))
-            b._color = True  # marker for test discovery
-            b.pack(side="left", padx=2)
-
-        search_label = tk.Label(self.form_frame, text="Search:")
-        search_label.pack(side="left", padx=(16, 4))
-        search_entry = tk.Entry(self.form_frame, textvariable=self.search_var, width=15)
-        search_entry.pack(side="left", padx=(0, 8))
-        search_entry.bind("<KeyRelease>", lambda e: self.apply_search())
-
-        self.topmost_btn = tk.Button(self.form_frame, text="📌 Pin Window",
-                                     command=self.toggle_topmost, width=10)
+        self.topmost_btn = tk.Button(self.toolbar, text="📌",
+                                     command=self.toggle_topmost,
+                                     font=("Segoe UI", 10), width=3,
+                                     relief="flat", bg="#ffffff")
         self.topmost_btn.pack(side="right", padx=(0, 8))
 
-        alpha_slider = tk.Scale(self.form_frame, from_=0.1, to=1.0, resolution=0.1,
+        alpha_slider = tk.Scale(self.toolbar, from_=0.1, to=1.0, resolution=0.1,
                                 orient="horizontal", label="💧",
                                 variable=self.alpha_var, width=8,
+                                font=("Segoe UI", 8),
                                 command=lambda v: self.set_transparency(float(v)))
-        alpha_slider.pack(side="right", padx=(0, 8))
+        alpha_slider.pack(side="right", padx=(8, 0))
 
-        self.dark_mode_btn = tk.Button(self.form_frame, text="🌙 Dark",
-                                       command=self.toggle_dark_mode, width=8)
-        self.dark_mode_btn.pack(side="right", padx=(8, 0))
+        # Search
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(self.toolbar, textvariable=self.search_var,
+                                font=("Segoe UI", 10), width=15,
+                                relief="solid", highlightthickness=0)
+        search_entry.pack(side="right", padx=(8, 0))
+        search_entry.bind("<KeyRelease>", lambda e: self.apply_search())
+        search_entry.insert(0, "Search…")
+        search_entry.configure(foreground="#999999")
+        search_entry.bind("<FocusIn>", lambda e: (
+            search_entry.delete(0, tk.END) if search_entry.get() == "Search…" else None,
+            search_entry.configure(foreground="#000000")
+        ))
 
-        file_menu_btn = tk.Menubutton(self.form_frame, text="📁 File", relief="raised")
-        file_menu = tk.Menu(file_menu_btn, tearoff=0)
-        file_menu.add_command(label="Export Markdown...", command=self._export_markdown_dialog)
+        # Add entry — hidden, used for keyboard shortcut
+        self.add_entry = tk.Entry(self.toolbar, font=("Segoe UI", 10), width=20,
+                                  relief="solid", highlightthickness=0)
+        self.add_entry.pack(side="left", padx=(0, 8))
+        self.add_entry.bind("<Return>", lambda e: self.add_note())
+
+        # Add button (backward-compat alias)
+        self.add_button = tk.Button(self.toolbar, text="Add",
+                                    command=self.add_note,
+                                    font=("Segoe UI", 9), relief="flat")
+        self.add_button.pack(side="left", padx=(0, 4))
+
+        # Color picker — minimal swatches (form_frame alias for backward compat)
+        self.form_frame = self.toolbar
+        self.color_frame = tk.Frame(self.toolbar, bg="#ffffff")
+        self.color_frame.pack(side="left", padx=(0, 8))
+        for i, color in enumerate(("yellow", "blue", "green", "pink", "lavender", "cyan")):
+            b = tk.Button(self.color_frame, text="", width=3,
+                          bg=NOTE_COLORS[color],
+                          command=lambda c=color: self.set_color(c),
+                          relief="flat",
+                          highlightbackground=("#50a8eb" if color == self.current_color else "#e0e0e0"),
+                          highlightthickness=1)
+            b._color = True
+            b._color_name = color
+            b.pack(side="left", padx=2)
+
+        # File menu
+        file_menu_btn = tk.Menubutton(self.toolbar, text="⋯",
+                                      font=("Segoe UI", 10), width=3,
+                                      relief="flat", bg="#ffffff")
+        file_menu = tk.Menu(file_menu_btn, tearoff=0, font=("Segoe UI", 9))
+        file_menu.add_command(label="Export Markdown…", command=self._export_markdown_dialog)
         file_menu.add_separator()
         file_menu.add_command(label="Quit", command=self.root.destroy)
         file_menu_btn["menu"] = file_menu
-        file_menu_btn.pack(side="right", padx=(0, 8))
+        file_menu_btn.pack(side="right", padx=(0, 4))
+
+        # Notes container
+        self.list_frame = tk.Frame(self.root, bg="#f3f3f3")
+        self.list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
         self._apply_theme()
         self._bind_shortcuts()
@@ -68,10 +122,10 @@ class NotesApp:
 
     def _bind_shortcuts(self) -> None:
         """Register keyboard shortcuts."""
-        self.root.bind("<Control-n>", self._focus_add_entry)
-        self.root.bind("<Control-s>", self._save_active_note)
-        self.root.bind("<Control-d>", self._delete_active_note)
-        self.root.bind("<Control-f>", self._focus_search)
+        self.root.bind("<Control-Key-n>", self._focus_add_entry)
+        self.root.bind("<Control-Key-s>", self._save_active_note)
+        self.root.bind("<Control-Key-d>", self._delete_active_note)
+        self.root.bind("<Control-Key-f>", self._focus_search)
 
     def _focus_add_entry(self, event=None) -> None:
         self.add_entry.delete(0, tk.END)
@@ -110,24 +164,28 @@ class NotesApp:
                         return
 
     def _focus_search(self, event=None) -> None:
-        self.search_var.set("")
-        for widget in self.form_frame.winfo_children():
-            if isinstance(widget, tk.Entry) and widget.cget("textvariable") == "":
-                widget.focus_set()
-                return
-        # Fallback: focus search entry by finding it
-        for widget in self.form_frame.winfo_children():
-            if isinstance(widget, tk.Entry):
-                widget.focus_set()
-                return
+        search_entry = None
+        for w in self.toolbar.winfo_children():
+            if isinstance(w, tk.Entry) and w.cget("textvariable") and w is not self.add_entry:
+                search_entry = w
+                break
+        if search_entry:
+            search_entry.delete(0, tk.END)
+            search_entry.focus_set()
 
     def _apply_theme(self) -> None:
         if self.dark_mode:
             self.root.configure(bg="#2b2b2b")
-            self.dark_mode_btn.configure(text="☀️ Light")
+            self.dark_mode_btn.configure(text="☀️", bg="#404040", fg="#ffffff")
+            self.toolbar.configure(bg="#2a2a2a", highlightbackground="#404040")
+            self.list_frame.configure(bg="#2b2b2b")
+            self.color_frame.configure(bg="#2a2a2a")
         else:
-            self.root.configure(bg="#f0f0f0")
-            self.dark_mode_btn.configure(text="🌙 Dark")
+            self.root.configure(bg="#f3f3f3")
+            self.dark_mode_btn.configure(text="🌙", bg="#ffffff", fg="#000000")
+            self.toolbar.configure(bg="#ffffff", highlightbackground="#e0e0e0")
+            self.list_frame.configure(bg="#f3f3f3")
+            self.color_frame.configure(bg="#ffffff")
 
     def toggle_dark_mode(self) -> None:
         self.dark_mode = not self.dark_mode
@@ -138,7 +196,6 @@ class NotesApp:
         """Toggle always-on-top for the entire window."""
         self.always_on_top = not self.always_on_top
         self.root.attributes("-topmost", self.always_on_top)
-        self.topmost_btn.configure(text="📌 Pinned" if self.always_on_top else "📌 Pin Window")
 
     def set_transparency(self, alpha: float) -> None:
         """Set window transparency, clamped to [0.1, 1.0]."""
@@ -148,6 +205,10 @@ class NotesApp:
 
     def set_color(self, color: str) -> None:
         self.current_color = color
+        # Update color swatch highlights
+        for btn in self.color_frame.winfo_children():
+            if getattr(btn, "_color", False):
+                btn.configure(highlightbackground=("#50a8eb" if btn._color_name == color else "#e0e0e0"))
 
     def apply_search(self) -> None:
         query = self.search_var.get().strip()
@@ -167,15 +228,15 @@ class NotesApp:
             self._refresh()
 
     def _render_content(self, text_widget: tk.Text, content: str) -> None:
-        """Parse simple markdown (**bold**, *italic*) and apply Tags to text_widget."""
-        text_widget.tag_configure("bold", font=("Consolas", 10, "bold"))
-        text_widget.tag_configure("italic", font=("Consolas", 10, "italic"))
+        """Parse simple markdown (**bold**, *italic*) and apply Tags."""
+        default_font = ("Segoe UI", 10)
+        text_widget.tag_configure("bold", font=(*default_font, "bold"))
+        text_widget.tag_configure("italic", font=(*default_font, "italic"))
 
-        # Simple state machine: iterate through content, track bold/italic spans
         plain = content.replace("**", "").replace("*", "")
         text_widget.insert("1.0", plain)
 
-        # Find bold spans
+        # Bold spans
         idx = 0
         search_text = content
         while True:
@@ -185,34 +246,27 @@ class NotesApp:
             end = search_text.find("**", start + 2)
             if end == -1:
                 break
-            inner = content[:start].replace("**", "").replace("*", "")
-            inner_end = content[:end].replace("**", "").replace("*", "")
-            start_pos = f"1.0+{len(inner)}c"
-            end_pos = f"1.0+{len(inner_end)}c"
-            text_widget.tag_add("bold", start_pos, end_pos)
-            search_text = search_text[:start] + "  " + search_text[start + 2:]
-            search_text = search_text[:end - 2] + "  " + search_text[end:]
+            inner_len = len(content[:start].replace("**", "").replace("*", ""))
+            inner_end_len = len(content[:end].replace("**", "").replace("*", ""))
+            text_widget.tag_add("bold", f"1.0+{inner_len}c", f"1.0+{inner_end_len}c")
             idx = end
 
-        # Find italic spans (single asterisk)
+        # Italic spans (single asterisk)
         search_text2 = content
         idx = 0
         while True:
             start = search_text2.find("*", idx)
             if start == -1:
                 break
-            # Skip if this is part of **
             if start + 1 < len(search_text2) and search_text2[start + 1] == "*":
                 idx = start + 2
                 continue
             end = search_text2.find("*", start + 1)
             if end == -1:
                 break
-            inner = content[:start].replace("**", "").replace("*", "")
-            inner_end = content[:end].replace("**", "").replace("*", "")
-            start_pos = f"1.0+{len(inner)}c"
-            end_pos = f"1.0+{len(inner_end)}c"
-            text_widget.tag_add("italic", start_pos, end_pos)
+            inner_len = len(content[:start].replace("**", "").replace("*", ""))
+            inner_end_len = len(content[:end].replace("**", "").replace("*", ""))
+            text_widget.tag_add("italic", f"1.0+{inner_len}c", f"1.0+{inner_end_len}c")
             idx = end
 
     def _refresh(self) -> None:
@@ -220,29 +274,49 @@ class NotesApp:
             widget.destroy()
         notes = self._search_results if self._search_results is not None else self.store.all()
         for note in notes:
-            frame = tk.Frame(self.list_frame, relief="raised", bd=1)
+            bg_color = NOTE_COLORS.get(note.color, NOTE_COLORS["yellow"])
+
+            frame = tk.Frame(self.list_frame, relief="flat",
+                             bg=bg_color,
+                             highlightbackground="#cccccc",
+                             highlightthickness=0,
+                             padx=12, pady=12)
             frame._note_id = note.id
 
-            text_widget = tk.Text(frame, width=20, height=4, fg=note.color,
-                                  font=("Consolas", 10), wrap="word")
+            # Rounded corners via canvas background
+            text_widget = tk.Text(frame, width=30, height=4,
+                                  font=("Segoe UI", 10),
+                                  wrap="word", bg=bg_color,
+                                  fg="#1a1a1a",
+                                  relief="flat",
+                                  borderwidth=0,
+                                  highlightthickness=0)
             self._render_content(text_widget, note.content or note.text)
-            text_widget.pack(side="left")
+            text_widget.pack(fill="both", expand=True, side="top")
+            text_widget.bind("<FocusIn>", lambda e, nid=note.id, tw=text_widget: self._on_note_focus(nid, tw))
 
-            save_btn = tk.Button(
-                frame, text="Save", width=5,
-                command=lambda nid=note.id, e=text_widget: self.edit_note(nid, e.get("1.0", tk.END)),
-            )
-            save_btn.pack(side="left", padx=(4, 0))
+            # Footer: pin + delete
+            footer = tk.Frame(frame, bg=bg_color)
+            footer.pack(fill="x", side="bottom", pady=(6, 0))
 
-            del_btn = tk.Button(frame, text="×", width=3,
-                                command=lambda nid=note.id: self.delete_note(nid))
-            del_btn.pack(side="right")
+            pin_state = "📌" if note.pinned else "📍"
+            tk.Button(footer, text=pin_state,
+                      command=lambda nid=note.id: self.toggle_pin(nid),
+                      font=("Segoe UI", 8), bg=bg_color, relief="flat",
+                      activebackground=bg_color).pack(side="right", padx=(4, 0))
 
-            pin_btn = tk.Button(frame, text="📌", width=3,
-                                command=lambda nid=note.id: self.toggle_pin(nid))
-            pin_btn.pack(side="right", padx=(0, 4))
+            tk.Button(footer, text="×",
+                      command=lambda nid=note.id: self.delete_note(nid),
+                      font=("Segoe UI", 9, "bold"), bg=bg_color,
+                      fg="#666666", relief="flat",
+                      activebackground=bg_color).pack(side="right")
 
-            frame.pack(pady=4)
+            frame.pack(pady=8, padx=2, fill="x")
+
+    def _on_note_focus(self, note_id: str, widget: tk.Text) -> None:
+        self._active_note_id = note_id
+        # Auto-resize height to content
+        widget.configure(height=max(4, len(widget.get("1.0", tk.END).splitlines())))
 
     def edit_note(self, note_id: str, new_text: str) -> None:
         self.store.update(note_id, text=new_text.rstrip("\n"))

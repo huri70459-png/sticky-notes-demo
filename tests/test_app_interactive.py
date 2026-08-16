@@ -40,7 +40,10 @@ def test_notes_have_delete_buttons(tmp_path: Path, tk_root):
     app._refresh()
     buttons = [w for w in app.list_frame.winfo_children()
                if isinstance(w, tk.Frame)
-               and any(isinstance(c, tk.Button) for c in w.winfo_children())]
+               and any(isinstance(c, tk.Button)
+                       for child in w.winfo_children()
+                       for c in ([child] if isinstance(child, tk.Button)
+                                 else (child.winfo_children() if isinstance(child, tk.Frame) else [])))]
     assert len(buttons) >= 1
 
 
@@ -78,7 +81,8 @@ def test_color_picker_buttons_exist(tmp_path: Path, tk_root):
     store = NoteStore(tmp_path / "notes.json")
     app = NotesApp(store=store, root=tk_root)
     color_btns = [w for w in app.form_frame.winfo_children()
-                  if getattr(w, "_color", False)]
+                  for w2 in (w.winfo_children() if isinstance(w, tk.Frame) else [w])
+                  if getattr(w2, "_color", False)]
     assert len(color_btns) >= 3
 
 
