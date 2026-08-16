@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes — Blueprint Prototype (MS Sticky Notes Aesthetic)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* ============================================================
+       BUILDABLE BLUEPRINT — Sticky Notes v2.0
+       Based on DESIGN.md spec
+       This HTML is the executable blueprint for the redesigned app.
+       Each section below maps to a concrete implementation milestone.
+    ============================================================ */
+
+    :root {
+      /* Core palette — MS Sticky Notes aesthetic */
+      --font-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+      --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+      --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.25);
+      --text-primary: #1a1a1a;
+      --text-secondary: rgba(26, 26, 26, 0.5);
+      --border: #e0e0e0;
+      --accent: #50a8eb;
+
+      /* Note color palette — Tier A deliverable */
+      --note-yellow: #ffeb3b;
+      --note-blue: #4fc3f7;
+      --note-green: #81c784;
+      --note-pink: #f06292;
+      --note-lavender: #ce93d8;
+      --note-cyan: #4dd0e1;
+      --note-purple: #ba68c5;
+
+      /* Theme — Tier A deliverable */
+      --bg-canvas: #f3f3f3;
+      --toolbar-bg: #ffffff;
+      --sidebar-bg: #ffffff;
+    }
+
+    .theme-dark {
+      --bg-canvas: #2b2b2b;
+      --toolbar-bg: #2a2a2a;
+      --sidebar-bg: #2a2a2a;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.5);
+      --border: #404040;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    /* ============================================
+       TIER A — VISUAL POLISH
+       Custom window chrome, drag-to-reorder,
+       color themes, font size selector
+    ============================================ */
+
+    /* Custom Window Chrome — Tier A */
+    .window-chrome {
+      background: var(--toolbar-bg);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .window-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .window-controls button {
+      border: none;
+      background: transparent;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 10px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .window-controls button:hover {
+      color: var(--text-primary);
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Toolbar — MS aesthetic */
+    .toolbar {
+      background: var(--toolbar-bg);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar button {
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid transparent;
+    }
+
+    .toolbar button:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .toolbar button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .toolbar button.icon {
+      padding: 6px;
+      font-size: 12px;
+      width: 28px;
+      height: 28px;
+    }
+
+    .toolbar .search-container {
+      flex: 1;
+      position: relative;
+    }
+
+    .toolbar .search-container input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px 6px 28px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      outline: none;
+      background: transparent;
+      color: var(--text-primary);
+    }
+
+    .toolbar .search-container input:focus {
+      border-color: var(--accent);
+    }
+
+    .toolbar .search-container i {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    /* Color Theme Switcher — Tier A */
+    .theme-selector {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
+
+    .theme-option {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .theme-option:hover {
+      transform: scale(1.1);
+    }
+
+    .theme-option.active {
+      border-color: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .theme-yellow { background: var(--note-yellow); }
+    .theme-blue { background: var(--note-blue); }
+    .theme-green { background: var(--note-green); }
+    .theme-pink { background: var(--note-pink); }
+    .theme-lavender { background: var(--note-lavender); }
+
+    /* Font Size Selector — Tier A */
+    .font-size-selector {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
+
+    .font-size-selector label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .font-size-selector select {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      font-size: 12px;
+      padding: 2px 6px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ============================================
+       TIER B — POWER FEATURES
+       Color themes, tag badges, pin animation
+    ============================================ */
+
+    /* Tag Badges — Tier B */
+    .tag-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(26, 26, 26, 0.7);
+      background: rgba(255, 255, 255, 0.5);
+      margin: 2px;
+    }
+
+    /* Pin Animation — Tier B */
+    .pinned .pin-btn {
+      animation: pop 0.3s ease;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.4); }
+      100% { transform: scale(1); }
+    }
+
+    /* ============================================
+       TIER C — KNOWLEDGE GRAPH
+       Graph view, backlinks, daily notes
+    ============================================ */
+
+    /* Graph View — Tier C */
+    .graph-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--sidebar-bg);
+      z-index: 200;
+      display: none;
+    }
+
+    .graph-view.active {
+      display: block;
+    }
+
+    .graph-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .graph-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 201;
+    }
+
+    /* Backlink Display — Tier C */
+    .backlinks {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: var(--radius-sm);
+    }
+
+    /* Daily Note Button — Tier C */
+    .daily-note-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      background: rgba(80, 168, 235, 0.1);
+      color: var(--accent);
+    }
+
+    /* ============================================
+       TIER D — SYNC & MOBILE
+    ============================================ */
+
+    /* Sync Status — Tier D */
+    .sync-status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 4px 8px;
+    }
+
+    .sync-status .syncing {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .sync-status .online { color: #4caf50; }
+    .sync-status .offline { color: #f44336; }
+
+    /* ============================================
+       NOTE CARD — CORE COMPONENT
+    ============================================ */
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .note {
+      background: var(--note-yellow);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-md);
+      transition: box-shadow 0.15s, transform 0.15s;
+      position: relative;
+      cursor: text;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      resize: vertical;
+      overflow: hidden;
+    }
+
+    .note.drag-over {
+      transform: scale(1.02);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .note:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .note:hover .note-actions {
+      opacity: 1;
+    }
+
+    .note:focus-within {
+      box-shadow: 0 0 0 2px var(--accent);
+      outline: none;
+      z-index: 10;
+    }
+
+    .note textarea {
+      width: 100%;
+      border: none;
+      background: transparent;
+      resize: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      outline: none;
+      flex: 1;
+      min-height: 80px;
+      font-size: var(--font-size, 14px);
+    }
+
+    /* Rich text tags */
+    .note .bold { font-weight: 600; }
+    .note .italic { font-style: italic; }
+
+    /* Note Footer — pin + delete (MS style: minimal) */
+    .note-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      gap: 8px;
+    }
+
+    .note-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .note-color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .note-actions {
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .note-actions button {
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      padding: 4px 6px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+
+    .note-actions button:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+    }
+
+    /* Color variants */
+    .note.blue { background: var(--note-blue); }
+    .note.green { background: var(--note-green); }
+    .note.pink { background: var(--note-pink); }
+    .note.purple { background: var(--note-purple); }
+    .note.lavender { background: var(--note-lavender); }
+    .note.cyan { background: var(--note-cyan); }
+
+    /* Hidden add-entry + color swatches */
+    .add-note-section {
+      margin-bottom: 16px;
+    }
+
+    .add-note-section input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      outline: none;
+      background: var(--toolbar-bg);
+    }
+
+    .add-note-section input:focus {
+      border-color: var(--accent);
+    }
+
+    /* Tweaks Panel — for development */
+    .tweaks-panel {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: var(--toolbar-bg);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      box-shadow: var(--shadow-lg);
+      font-size: 12px;
+      max-width: 300px;
+      z-index: 100;
+    }
+
+    .tweaks-panel h4 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .tweaks-panel label {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .tweaks-panel select, .tweaks-panel input[type="range"] {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Window Chrome — Tier A -->
+  <div class="window-chrome" id="windowChrome">
+    <div class="window-title">
+      <i class="fas fa-sticky-note"></i>
+      <span>Sticky Notes</span>
+    </div>
+    <div class="window-controls">
+      <button id="minimizeBtn" title="Minimize">−</button>
+      <button id="maximizeBtn" title="Maximize">□</button>
+      <button id="closeBtn" title="Close">×</button>
+    </div>
+  </div>
+
+  <!-- Toolbar — MS aesthetic -->
+  <div class="toolbar">
+    <button id="newNoteBtn">
+      <i class="fas fa-plus"></i> New Note
+    </button>
+
+    <!-- Color Theme Selector — Tier A -->
+    <div class="theme-selector" id="themeSelector">
+      <div class="theme-option theme-yellow active" onclick="setNoteTheme('yellow')" title="Yellow"></div>
+      <div class="theme-option theme-blue" onclick="setNoteTheme('blue')" title="Blue"></div>
+      <div class="theme-option theme-green" onclick="setNoteTheme('green')" title="Green"></div>
+      <div class="theme-option theme-pink" onclick="setNoteTheme('pink')" title="Pink"></div>
+      <div class="theme-option theme-lavender" onclick="setNoteTheme('lavender')" title="Lavender"></div>
+    </div>
+
+    <!-- Font Size Selector — Tier A -->
+    <div class="font-size-selector">
+      <label>A:</label>
+      <select id="fontSizeSelect">
+        <option value="12px">Small</option>
+        <option value="14px" selected>Default</option>
+        <option value="16px">Large</option>
+        <option value="18px">X-Large</option>
+      </select>
+    </div>
+
+    <!-- Daily Note Button — Tier C -->
+    <button id="dailyNoteBtn" class="daily-note-btn">
+      📅 Today
+    </button>
+
+    <!-- Sync Status — Tier D -->
+    <div class="sync-status" id="syncStatus">
+      <i class="fas fa-circle online"></i>
+      <span>Synced</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Search -->
+    <div class="search-container">
+      <i class="fas fa-search"></i>
+      <input type="text" id="searchInput" placeholder="Search…" />
+    </div>
+
+    <!-- Transparency Slider — Tier A -->
+    <input type="range" id="transparencySlider" min="10" max="100" value="100"
+           style="width: 80px;" />
+
+    <!-- Dark Mode — Tier A -->
+    <button id="darkModeBtn" class="icon">🌙</button>
+
+    <!-- Always-on-top — Tier A -->
+    <button id="topmostBtn" class="icon" title="Always on top">📌</button>
+
+    <!-- Settings — Tier A -->
+    <button id="settingsBtn" class="icon">⋯</button>
+  </div>
+
+  <!-- Add Note Section -->
+  <div class="add-note-section">
+    <input type="text" id="addNoteInput" placeholder="Type a note and press Enter…" />
+  </div>
+
+  <!-- Notes Grid -->
+  <div class="notes-grid" id="notesGrid"></div>
+
+  <!-- Graph View — Tier C -->
+  <div class="graph-view" id="graphView">
+    <div class="graph-overlay">
+      <button onclick="closeGraph()">← Back</button>
+      <h3 style="margin: 8px 0;">Note Connections</h3>
+      <p style="font-size:12px;color:var(--text-secondary);">Graph view: visualizing [[link]] relationships</p>
+    </div>
+    <canvas class="graph-canvas" id="graphCanvas"></canvas>
+  </div>
+
+  <!-- Tweaks Panel -->
+  <div class="tweaks-panel" id="tweaksPanel">
+    <h4>Tweaks</h4>
+    <label>Density:
+      <select id="densitySelect">
+        <option value="compact">Compact</option>
+        <option value="normal" selected>Normal</option>
+        <option value="comfortable">Comfortable</option>
+      </select>
+    </label>
+    <label>Border radius:
+      <select id="radiusSelect">
+        <option value="2px">Sharp</option>
+        <option value="4px" selected>Standard</option>
+        <option value="12px">Rounded</option>
+      </select>
+    </label>
+    <label>Shadow:
+      <select id="shadowSelect">
+        <option value="subtle" selected>Subtle</option>
+        <option value="strong">Strong</option>
+      </select>
+    </label>
+  </div>
+
+  <script>
+    // ================================================================
+    // BUILDABLE BLUEPRINT — JavaScript mirrors Python app architecture
+    // Data model: Note {id, text, content, color, pinned, tags, links, always_on_top}
+    // Store: NoteStore (CRUD + search + toggle_pin + filter_by_tag + backlinks)
+    // Sync: GitSync / SimpleAPISync
+    // ================================================================
+
+    // ---- Data Model ----
+    let notes = [
+      { id: "1", text: "Welcome to Sticky Notes", content: "**Welcome**! Right-click for context menu.", color: "yellow", pinned: true, tags: ["welcome"], links: [], always_on_top: false },
+      { id: "2", text: "Meeting with team", content: "Discuss design decisions", color: "blue", pinned: false, tags: ["work"], links: [], always_on_top: false },
+      { id: "3", text: "Buy groceries", content: "milk\neggs\nbread", color: "green", pinned: false, tags: ["personal", "shopping"], links: ["4"], always_on_top: false },
+      { id: "4", text: "Recipe ideas", content: "See [[3]] for shopping list", color: "pink", pinned: false, tags: ["cooking"], links: [], always_on_top: false },
+    ];
+
+    let currentColor = "yellow";
+    let currentFontSize = "14px";
+    let currentTheme = "yellow";
+    let darkMode = false;
+
+    // ---- Cache DOM ----
+    const notesGrid = document.getElementById("notesGrid");
+    const newNoteBtn = document.getElementById("newNoteBtn");
+    const darkModeBtn = document.getElementById("darkModeBtn");
+    const topmostBtn = document.getElementById("topmostBtn");
+    const searchInput = document.getElementById("searchInput");
+    const transparencySlider = document.getElementById("transparencySlider");
+    const fontSizeSelect = document.getElementById("fontSizeSelect");
+    const dailyNoteBtn = document.getElementById("dailyNoteBtn");
+    const syncStatus = document.getElementById("syncStatus");
+    const addNoteInput = document.getElementById("addNoteInput");
+
+    // ---- Render ----
+    function renderNotes(filterText = "") {
+      notesGrid.innerHTML = "";
+      let filtered = notes.filter(n =>
+        !filterText ||
+        n.text.toLowerCase().includes(filterText.toLowerCase()) ||
+        (n.content || "").toLowerCase().includes(filterText.toLowerCase()) ||
+        n.tags.some(t => t.toLowerCase().includes(filterText.toLowerCase()))
+      );
+      // Sort: pinned first, then by id
+      filtered.sort((a, b) => (b.pinned === a.pinned ? 0 : b.pinned ? 1 : -1));
+
+      for (const note of filtered) {
+        const el = document.createElement("div");
+        el.className = `note ${note.color}`;
+        el.dataset.id = note.id;
+        el.style.setProperty("--font-size", currentFontSize);
+
+        if (note.pinned) el.classList.add("pinned");
+
+        // Backlinks — Tier C
+        const backlinks = notes.filter(n => n.links && n.links.includes(note.id));
+
+        el.innerHTML = `
+          <textarea placeholder="Write something…" spellcheck="true"
+                    style="font-size: ${currentFontSize};">${note.content || note.text}</textarea>
+
+          <!-- Tag Badges — Tier B -->
+          ${note.tags.length ? `<div class="tag-badges">${note.tags.map(t => `<span class="tag-badge">#${t}</span>`).join("")}</div>` : ""}
+
+          <!-- Backlinks — Tier C -->
+          ${backlinks.length > 0 ? `
+            <div class="backlinks">
+              <i class="fas fa-link"></i> Linked from: ${backlinks.map(b => `<a href="#" onclick="focusNote('${b.id}')">${b.text.slice(0,20)}</a>`).join(", ")}
+            </div>
+          ` : ""}
+
+          <div class="note-footer">
+            <div class="note-left">
+              <div class="note-color-dot" style="background:${getNoteBg(note.color)}"></div>
+            </div>
+            <div class="note-actions">
+              <button class="pin-btn" onclick="togglePin('${note.id}')">📌</button>
+              <button onclick="deleteNote('${note.id}')">×</button>
+            </div>
+          </div>
+        `;
+
+        // Bind events
+        const textarea = el.querySelector("textarea");
+        textarea.addEventListener("input", () => updateNote(note.id, textarea.value));
+        textarea.addEventListener("blur", () => {
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+          updateNote(note.id, textarea.value);
+        });
+        textarea.addEventListener("focus", () => {
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+        });
+
+        // Drag to reorder — Tier A
+        el.draggable = true;
+        el.addEventListener("dragstart", () => el.classList.add("dragging"));
+        el.addEventListener("dragend", () => el.classList.remove("dragging"));
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          el.classList.add("drag-over");
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
+
+        // Context menu — MS Sticky Notes style
+        el.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          // Simple context menu
+          const menu = document.createElement("div");
+          menu.style.cssText = "position:fixed;left:" + e.pageX + "px;top:" + (e.pageY-10) + "px;background:#fff;border:1px solid #ccc;border-radius:4px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:999;font-size:12px;";
+          menu.innerHTML = `
+            <div onclick="duplicateNote('${note.id}')" style="padding:4px 8px;cursor:pointer;">📋 Duplicate</div>
+            <div onclick="setNoteColor('${note.id}','blue')" style="padding:4px 8px;cursor:pointer;">🔵 Blue</div>
+            <div onclick="setNoteColor('${note.id}','green')" style="padding:4px 8px;cursor:pointer;">🟢 Green</div>
+            <div onclick="setNoteColor('${note.id}','pink')" style="padding:4px 8px;cursor:pointer;">🩷 Pink</div>
+            <div onclick="setNoteColor('${note.id}','lavender')" style="padding:4px 8px;cursor:pointer;">💜 Lavender</div>
+            <hr style="margin:4px 0;border:none;border-top:1px solid #eee;">
+            <div onclick="deleteNote('${note.id}')" style="padding:4px 8px;cursor:pointer;color:#f44336;">🗑️ Delete</div>
+          `;
+          document.body.appendChild(menu);
+          setTimeout(() => {
+            document.body.removeChild(menu);
+          }, 3000);
+        });
+
+        notesGrid.appendChild(el);
+
+        // Auto-height
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+      }
+    }
+
+    // ---- Business Logic (mirrors Python NoteStore) ----
+    function updateNote(id, content) {
+      const note = notes.find(n => n.id === id);
+      if (note) { note.content = content; note.text = content; }
+    }
+
+    function deleteNote(id) {
+      notes = notes.filter(n => n.id !== id);
+      renderNotes(searchInput.value);
+    }
+
+    function togglePin(id) {
+      const note = notes.find(n => n.id === id);
+      if (note) note.pinned = !note.pinned;
+      renderNotes(searchInput.value);
+    }
+
+    function toggleDarkMode() {
+      darkMode = !darkMode;
+      document.body.classList.toggle("theme-dark", darkMode);
+      darkModeBtn.textContent = darkMode ? "☀️" : "🌙";
+    }
+
+    function toggleAlwaysOnTop() {
+      // Would call Python root.attributes("-topmost", True)
+    }
+
+    function createNote() {
+      const text = addNoteInput.value.trim();
+      if (!text) return;
+      notes.unshift({
+        id: Date.now().toString(),
+        text: text,
+        content: text,
+        color: currentColor,
+        pinned: false,
+        tags: [],
+        links: [],
+        always_on_top: false,
+      });
+      addNoteInput.value = "";
+      renderNotes(searchInput.value);
+    }
+
+    function setColor(color) {
+      currentColor = color;
+      renderNotes(searchInput.value);
+    }
+
+    function setNoteTheme(theme) {
+      currentTheme = theme;
+      document.querySelectorAll(".theme-option").forEach(el => el.classList.remove("active"));
+      event.target.classList.add("active");
+      // Would persist to settings in Python
+    }
+
+    function setNoteColor(id, color) {
+      const note = notes.find(n => n.id === id);
+      if (note) note.color = color;
+      renderNotes(searchInput.value);
+    }
+
+    function duplicateNote(id) {
+      const note = notes.find(n => n.id === id);
+      if (note) {
+        notes.unshift({ ...note, id: Date.now().toString() });
+      }
+      renderNotes(searchInput.value);
+    }
+
+    function focusNote(id) {
+      const note = notes.find(n => n.id === id);
+      if (note) {
+        // Would focus the note in the UI
+      }
+    }
+
+    function exportMarkdown() {
+      let md = "# Sticky Notes Export\n\n";
+      for (const note of notes) {
+        md += `## ${note.text}\n`;
+        if (note.tags.length) md += `**Tags:** ${note.tags.map(t => `#${t}`).join(' ')}\n`;
+        if (note.links?.length) md += `**Links:** ${note.links.map(l => `[[${l}]]`).join(' ')}\n`;
+        if (note.pinned) md += "**📌 Pinned**\n";
+        md += "\n";
+      }
+      const blob = new Blob([md], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "sticky-notes-export.md";
+      a.click(); URL.revokeObjectURL(url);
+    }
+
+    function toggleGraph() {
+      document.getElementById("graphView").classList.toggle("active");
+    }
+
+    function closeGraph() {
+      document.getElementById("graphView").classList.remove("active");
+    }
+
+    // ---- Event Listeners ----
+    newNoteBtn.addEventListener("click", createNote);
+    addNoteInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") createNote();
+    });
+    darkModeBtn.addEventListener("click", toggleDarkMode);
+    topmostBtn.addEventListener("click", toggleAlwaysOnTop);
+    searchInput.addEventListener("input", () => renderNotes(searchInput.value));
+    transparencySlider.addEventListener("input", (e) => {
+      const val = e.target.value;
+      notesGrid.style.opacity = val / 100;
+    });
+    fontSizeSelect.addEventListener("change", () => {
+      currentFontSize = fontSizeSelect.value;
+      renderNotes(searchInput.value);
+    });
+    dailyNoteBtn.addEventListener("click", () => {
+      const today = new Date().toISOString().split('T')[0];
+      const existing = notes.find(n => n.tags.includes("daily"));
+      if (existing) {
+        focusNote(existing.id);
+      } else {
+        notes.unshift({
+          id: "daily-" + today,
+          text: "Daily Note: " + today,
+          content: "# " + today + "\n\n## Tasks\n\n## Notes\n",
+          color: currentColor,
+          pinned: true,
+          tags: ["daily"],
+          links: [],
+          always_on_top: false,
+        });
+        renderNotes(searchInput.value);
+      }
+    });
+    syncStatus.addEventListener("click", () => {
+      syncStatus.innerHTML = '<i class="fas fa-sync-alt syncing"></i><span>Syncing…</span>';
+      setTimeout(() => {
+        syncStatus.innerHTML = '<i class="fas fa-circle online"></i><span>Synced</span>';
+      }, 800);
+    });
+
+    // ---- Keyboard Shortcuts ----
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case "n": e.preventDefault(); addNoteInput.focus(); break;
+          case "s": e.preventDefault(); console.log("Save active note"); break;
+          case "d": e.preventDefault(); if (notes.length) deleteNote(notes[0].id); break;
+          case "f": e.preventDefault(); addNoteInput.focus(); break;
+        }
+      }
+    });
+
+    function getNoteBg(color) {
+      const map = { yellow: "#ffeb3b", blue: "#4fc3f7", green: "#81c784", pink: "#f06292", lavender: "#ce93d8", cyan: "#4dd0e1" };
+      return map[color] || "#ffeb3b";
+    }
+
+    // ---- Init ----
+    renderNotes();
+  </script>
+</body>
+</html>
