@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes PRO — Blueprint (Surpass Tier-1)</title>
+  <style>
+    /* === DESIGN.TOKENS (Google DESIGN.md format embedded) === */
+    :root {
+      /* MS Sticky Notes palette + power-user accents */
+      --color-yellow: #ffeb3b;
+      --color-blue: #4fc3f7;
+      --color-green: #81c784;
+      --color-pink: #f06292;
+      --color-lavender: #ce93d8;
+      --color-cyan: #4dd0e1;
+
+      /* UI tokens */
+      --color-primary: #3b82f6;       /* Accent for selection */
+      --color-secondary: #64748b;      /* Muted text */
+      --color-surface: #f8fafc;        /* Light surface */
+      --color-surface-dark: #0f172a;   /* Dark surface */
+      --color-text: #1e293b;          /* Body text */
+      --color-border: #e2e8f0;        /* Borders */
+      --color-shadow: rgba(0, 0, 0, 0.15);
+      --color-shadow-hover: rgba(0, 0, 0, 0.25);
+
+      --font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --font-size-sm: 11px;
+      --font-size-md: 14px;
+      --font-size-lg: 16px;
+
+      --radius-sm: 4px;
+      --radius-md: 12px;             /* Windows 11 rounded */
+      --radius-lg: 16px;
+
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 12px;
+      --spacing-lg: 16px;
+      --spacing-xl: 24px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: linear-gradient(135deg, #f3f3f3 0%, #e8e8e8 100%);
+      min-height: 100vh;
+      padding: 16px;
+      color: var(--color-text);
+    }
+
+    /* === WINDOW CHROME (Tier 1: Custom Window Chrome) === */
+    .window-chrome {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      padding: 8px 16px;
+      margin-bottom: var(--spacing-md);
+      box-shadow: 0 2px 8px var(--color-shadow);
+    }
+
+    .window-title {
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .window-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .window-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .window-btn.minimize:hover { background: rgba(0, 0, 0, 0.1); }
+    .window-btn.maximize:hover { background: rgba(0, 0, 0, 0.1); }
+    .window-btn.close:hover { background: #e74331; color: white; }
+
+    /* === TOOLBAR (Tier 1: Minimal Toolbar) === */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      padding: 8px 16px;
+      margin-bottom: var(--spacing-md);
+      box-shadow: 0 2px 8px var(--color-shadow);
+      transition: all 0.3s ease;
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toolbar-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: var(--font-size-sm);
+      font-family: var(--font-family);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      color: var(--color-text);
+    }
+
+    .btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.1);
+    }
+
+    .color-swatch.active {
+      border-color: var(--color-primary);
+      transform: scale(1.1);
+    }
+
+    .color-yellow { background: var(--color-yellow); }
+    .color-blue { background: var(--color-blue); }
+    .color-green { background: var(--color-green); }
+    .color-pink { background: var(--color-pink); }
+    .color-lavender { background: var(--color-lavender); }
+    .color-cyan { background: var(--color-cyan); }
+
+    .search-box {
+      width: 200px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      font-size: var(--font-size-sm);
+      font-family: var(--font-family);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-box:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #ccc;
+      transition: 0.3s;
+      border-radius: 20px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider { background: var(--color-primary); }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    .transparency-slider {
+      width: 80px;
+    }
+
+    /* === NOTES GRID === */
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: var(--spacing-md);
+    }
+
+    /* === NOTE CARD (Tier 1: Glassmorphism + Shadow Elevation) === */
+    .note-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(5px);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      box-shadow: 0 2px 8px var(--color-shadow);
+      transition: all 0.3s ease;
+      cursor: grab;
+      min-height: 120px;
+      border: 1px solid rgba(226, 232, 240, 0.3);
+    }
+
+    .note-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--color-shadow-hover);
+    }
+
+    .note-card.dragging {
+      opacity: 0.5;
+      transform: rotate(2deg);
+    }
+
+    .note-card.pinned {
+      box-shadow: 0 4px 12px var(--color-shadow-hover);
+    }
+
+    /* Color variants */
+    .note-card.color-yellow { background: var(--color-yellow); }
+    .note-card.color-blue { background: var(--color-blue); }
+    .note-card.color-green { background: var(--color-green); }
+    .note-card.color-pink { background: var(--color-pink); }
+    .note-card.color-lavender { background: var(--color-lavender); }
+    .note-card.color-cyan { background: var(--color-cyan); }
+
+    /* === RICH TEXT (Tier 2: Markdown rendering) === */
+    .note-text {
+      font-size: var(--font-size-md);
+      line-height: 1.5;
+      font-family: var(--font-family);
+      width: 100%;
+      border: none;
+      background: transparent;
+      resize: none;
+      outline: none;
+      color: #1a1a1a;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* Tag badges — Tier B */
+    .tag-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.3);
+      color: var(--color-secondary);
+      font-size: var(--font-size-sm);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin: 2px 2px 2px 0;
+      font-weight: 600;
+    }
+
+    /* Backlinks display — Tier C */
+    .backlinks {
+      font-size: var(--font-size-sm);
+      color: var(--color-secondary);
+      margin-top: var(--spacing-sm);
+      padding-top: var(--spacing-xs);
+      border-top: 1px solid rgba(226, 232, 240, 0.4);
+    }
+
+    /* === NOTE FOOTER === */
+    .note-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: var(--spacing-sm);
+      gap: var(--spacing-xs);
+    }
+
+    .note-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .note-action-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: var(--font-size-sm);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+
+    .note-action-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    /* === GRAPH VIEW (Tier C) === */
+    .graph-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .graph-modal.show { display: flex; }
+
+    .graph-canvas {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: var(--radius-md);
+      width: 80vw;
+      height: 70vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-node {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: var(--font-size-sm);
+      backdrop-filter: blur(5px);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .graph-node:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+
+    .graph-node.pinned {
+      border-color: var(--color-primary);
+    }
+
+    .graph-link {
+      position: absolute;
+      background: rgba(59, 130, 246, 0.5);
+      transform: rotate(45deg);
+      width: 2px;
+      height: 100px;
+    }
+
+    /* === COLLABORATION (Tier 3: Real-time) === */
+    .user-presence {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background: var(--color-primary);
+      top: 8px;
+      right: 8px;
+    }
+
+    .user-presence.multiple {
+      background: linear-gradient(45deg, #f00, #0f0, #00f);
+    }
+
+    /* === AI INTEGRATION (Tier 4) === */
+    .ai-suggestions {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      box-shadow: 0 4px 12px var(--color-shadow-hover);
+      font-size: var(--font-size-sm);
+      display: none;
+      max-width: 200px;
+      z-index: 10;
+    }
+
+    .ai-suggestions.show { display: block; }
+
+    .ai-suggestion {
+      padding: 4px 0;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+    }
+
+    .ai-suggestion:last-child { border-bottom: none; }
+    .ai-suggestion:hover { background: rgba(59, 130, 246, 0.1); }
+
+    /* Dark mode */
+    .dark-mode {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+
+    .dark-mode .toolbar,
+    .dark-mode .window-chrome {
+      background: rgba(30, 37, 53, 0.7);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode .note-text { color: #e2e8f0; }
+    .dark-mode .search-box { background: #1e293b; color: #e2e8f0; }
+
+    /* Animation classes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .note-card { animation: fadeIn 0.3s ease; }
+    .note-card:nth-child(2) { animation-delay: 0.05s; }
+    .note-card:nth-child(3) { animation-delay: 0.1s; }
+
+    .btn-primary { animation: popIn 0.2s ease; }
+  </style>
+</head>
+<body>
+  <!-- Window Chrome -->
+  <div class="window-chrome" id="windowChrome">
+    <div class="window-title">
+      <span>📝</span>
+      <span>Sticky Notes PRO</span>
+      <span style="font-size: 12px; color: #64748b;">— Surpass Tier-1</span>
+    </div>
+    <div class="window-controls">
+      <button class="window-btn minimize" title="Minimize">_</button>
+      <button class="window-btn maximize" title="Maximize">□</button>
+      <button class="window-btn close" title="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar" id="toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-primary" onclick="addNote()">+ New Note</button>
+
+      <div style="display: flex; gap: 4px;" id="colorSwatches">
+        <div class="color-swatch color-yellow active" onclick="setColor('yellow')"></div>
+        <div class="color-swatch color-blue" onclick="setColor('blue')"></div>
+        <div class="color-swatch color-green" onclick="setColor('green')"></div>
+        <div class="color-swatch color-pink" onclick="setColor('pink')"></div>
+        <div class="color-swatch color-lavender" onclick="setColor('lavender')"></div>
+        <div class="color-swatch color-cyan" onclick="setColor('cyan')"></div>
+      </div>
+
+      <input type="text" class="search-box" placeholder="Search…" oninput="filterNotes()">
+    </div>
+
+    <div class="toolbar-right">
+      <button class="btn" onclick="showGraphView()" title="Graph View">🔗</button>
+      <button class="btn" onclick="createDailyNote()" title="Daily Note">📅</button>
+      <input type="range" class="transparency-slider" min="0.1" max="1" step="0.1" value="1" onchange="setTransparency(this.value)" style="width: 80px;">
+      <span>💧</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleDarkMode()">
+        <span class="toggle-slider"></span>
+      </label>
+      <span id="darkToggle">🌙</span>
+      <button class="btn" onclick="toggleTopmost()" title="Always on Top">📌</button>
+      <button class="btn" onclick="showTemplates()" title="Templates">📋</button>
+    </div>
+  </div>
+
+  <!-- Notes Grid -->
+  <div class="notes-grid" id="notesGrid">
+    <!-- Notes are rendered here by JS -->
+  </div>
+
+  <!-- Graph Modal -->
+  <div class="graph-modal" id="graphModal">
+    <div class="graph-canvas" id="graphCanvas">
+      <!-- Graph nodes rendered here -->
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 14px;">
+        Graph view: drag to connect notes. Click X to close.
+      </div>
+      <div class="user-presence multiple"></div>
+    </div>
+  </div>
+
+  <!-- Templates Modal -->
+  <div class="graph-modal" id="templateModal" style="background: rgba(0,0,0,0.5);">
+    <div style="background: white; border-radius: 12px; padding: 20px; max-width: 400px; max-height: 80vh; overflow-y: auto;">
+      <h3 style="margin-bottom: 12px;">Templates</h3>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn" style="text-align: left;" onclick="applyTemplate('shopping')">🛒 Shopping List</button>
+        <button class="btn" style="text-align: left;" onclick="applyTemplate('todo')">✅ TODO</button>
+        <button class="btn" style="text-align: left;" onclick="applyTemplate('journal')">📔 Daily Journal</button>
+        <button class="btn" style="text-align: left;" onclick="applyTemplate('meeting')">👥 Meeting Notes</button>
+        <button class="btn" style="text-align: left;" onclick="applyTemplate('brainstorm')">💡 Brainstorm</button>
+      </div>
+      <button class="btn" style="margin-top: 12px;" onclick="closeTemplates()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== Design tokens as JS constants =====
+    const COLORS = {
+      yellow: "#ffeb3b",
+      blue: "#4fc3f7",
+      green: "#81c784",
+      pink: "#f06292",
+      lavender: "#ce93d8",
+      cyan: "#4dd0e1"
+    };
+
+    let notes = [
+      {
+        id: "1",
+        text: "Welcome to Sticky Notes PRO!",
+        content: "This is a **bold** welcome message.\nSee [[2]] for more.\n#welcome #demo",
+        color: "yellow",
+        pinned: true,
+        order: 0,
+        tags: ["welcome", "demo"],
+        links: ["2"],
+        always_on_top: false,
+        content_rendered: "This is a <strong>bold</strong> welcome message.\nSee note #2 for more.\n#welcome #demo"
+      },
+      {
+        id: "2",
+        text: "Ideas for improvement",
+        content: "🔗 Graph view\n📅 Daily notes\nAI tagging\nReal-time collab\nTemplates\n#todo #ideas",
+        color: "blue",
+        pinned: false,
+        order: 1,
+        tags: ["todo", "ideas"],
+        links: [],
+        always_on_top: false
+      },
+      {
+        id: "3",
+        text: "Quick reminder",
+        content: "Call mom\nBuy groceries\nMeeting at 3pm",
+        color: "pink",
+        pinned: true,
+        order: 2,
+        tags: ["urgent", "personal"],
+        links: [],
+        always_on_top: true
+      }
+    ];
+
+    let currentColor = "yellow";
+    let darkMode = false;
+    let transparency = 1.0;
+    let isDragging = false;
+    let dragSrcEl = null;
+
+    // ===== Render =====
+    function renderNotes() {
+      const grid = document.getElementById("notesGrid");
+      grid.innerHTML = "";
+
+      const sorted = [...notes].sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return a.order - b.order;
+      });
+
+      sorted.forEach((note, idx) => {
+        const el = createNoteElement(note, idx);
+        grid.appendChild(el);
+      });
+    }
+
+    function createNoteElement(note, idx) {
+      const div = document.createElement("div");
+      div.className = `note-card color-${note.color}` + (note.pinned ? " pinned" : "");
+      div.draggable = true;
+      div.dataset.id = note.id;
+      div.dataset.order = note.order;
+
+      // Drag handlers
+      div.addEventListener("dragstart", (e) => {
+        isDragging = true;
+        dragSrcEl = div;
+        div.classList.add("dragging");
+        setTimeout(() => div.classList.add("dragging"), 0);
+      });
+
+      div.addEventListener("dragend", () => {
+        isDragging = false;
+        dragSrcEl = null;
+        div.classList.remove("dragging");
+      });
+
+      div.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(grid, div);
+        grid.insertBefore(div, afterElement);
+      });
+
+      div.addEventListener("dragover", (e) => {
+        e.preventDefault();
+      });
+
+      div.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const newIndex = Array.from(grid.children).indexOf(div);
+        notes = notes.map(n => ({ ...n }));
+        moveNote(note.id, newIndex);
+      });
+
+      // Right-click context menu
+      div.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        showContextMenu(e.clientX, e.clientY, note.id);
+      });
+
+      // Render content with markdown
+      const markdownHtml = renderMarkdown(note.content);
+
+      div.innerHTML = `
+        <div class="user-presence"></div>
+        <textarea class="note-text" placeholder="Type a note…" oninput="editNote('${note.id}', this.value)">${markdownHtml || note.text}</textarea>
+        ${renderTags(note.tags)}
+        ${renderBacklinks(note)}
+        <div class="note-footer">
+          <div class="note-actions">
+            <button class="note-action-btn" onclick="togglePin('${note.id}')" title="Pin">📌</button>
+            <button class="note-action-btn" onclick="deleteNote('${note.id}')" title="Delete">🗑️</button>
+          </div>
+          ${note.always_on_top ? '<span title="Always on top">📌</span>' : ''}
+        </div>
+        <div class="ai-suggestions" id="ai-suggestions-${note.id}">
+          <div class="ai-suggestion" onclick="applySuggestion('${note.id}', 'Link to: ${getRelatedNotes(note.id).join(", ")}')">🔍 Link to: ${getRelatedNotes(note.id).slice(0,3).join(", ")}</div>
+          <div class="ai-suggestion" onclick="autoTag('${note.id}')">🏷️ Auto-tag: ${suggestTags(note.content)}</div>
+        </div>
+      `;
+
+      return div;
+    }
+
+    function getDragAfterElement(container, draggable) {
+      let bestElementToDropAfter = null;
+      const draggableRect = draggable.getBoundingClientRect();
+      const x = draggableRect.x + draggableRect.width / 2;
+      const y = draggableRect.y + draggableRect.height / 2;
+
+      [...container.querySelectorAll(".note-card:not(.dragging)")].forEach(child => {
+        const childRect = child.getBoundingClientRect();
+        const cx = childRect.x + childRect.width / 2;
+        const cy = childRect.y + childRect.height / 2;
+        if (y < cy) {
+          if (x < cx && !bestElementToDropAfter) {
+            bestElementToDropAfter = child;
+          }
+        }
+      });
+      return bestElementToDropAfter;
+    }
+
+    // ===== Markdown rendering (Tier 2: Rich Text) =====
+    function renderMarkdown(text) {
+      if (!text) return "";
+      return text
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+        .replace(/`(.+?)`/g, "<code>$1</code>")
+        .replace(/^# (.+)$/gm, "<strong>$1</strong>")
+        .replace(/^## (.+)$/gm, "<strong>$1</strong>")
+        .replace(/\[\[(.+?)\]\]/g, '<span class="link">[[<em>$1</em>]]</span>');
+    }
+
+    // ===== Tags rendering (Tier B: Inline Badges) =====
+    function renderTags(tags) {
+      if (!tags || !tags.length) return "";
+      return `<div style="margin-top: 8px;">` +
+        tags.map(t => `<span class="tag-badge">#${t}</span>`).join("") +
+        `</div>`;
+    }
+
+    // ===== Backlinks display (Tier C) =====
+    function renderBacklinks(note) {
+      const backlinks = notes.filter(n =>
+        n.links && n.links.includes(note.id)
+      );
+      if (!backlinks.length) return "";
+      return `<div class="backlinks">🔗 Linked from: ${backlinks.map(b => b.text).join(", ")}</div>`;
+    }
+
+    // ===== Note operations =====
+    function addNote() {
+      const text = document.querySelector(".search-box").value || "New note";
+      const newNote = {
+        id: Date.now().toString(),
+        text,
+        content: text,
+        color: currentColor,
+        pinned: false,
+        order: notes.length,
+        tags: [],
+        links: [],
+        always_on_top: false
+      };
+      notes.push(newNote);
+      renderNotes();
+    }
+
+    function editNote(id, content) {
+      const note = notes.find(n => n.id === id);
+      if (note) note.content = content;
+      // Auto-parse tags
+      note.tags = [...new Set([...content.matchAll(/#(\w+)/g)].map(m => m[1]))];
+      // Auto-parse links
+      note.links = [...new Set([...content.matchAll(/\[\[([^\]]+)\]\]/g)].map(m => m[1]))];
+    }
+
+    function togglePin(id) {
+      const note = notes.find(n => n.id === id);
+      if (note) note.pinned = !note.pinned;
+      renderNotes();
+    }
+
+    function deleteNote(id) {
+      notes = notes.filter(n => n.id !== id);
+      renderNotes();
+    }
+
+    function moveNote(id, newPosition) {
+      const idx = notes.findIndex(n => n.id === id);
+      if (idx === -1) return;
+      const [note] = notes.splice(idx, 1);
+      note.order = newPosition;
+      notes.splice(newPosition, 0, note);
+      renderNotes();
+    }
+
+    function setColor(color) {
+      currentColor = color;
+      document.querySelectorAll(".color-swatch").forEach(s => s.classList.remove("active"));
+      document.querySelector(`.color-${color}`).classList.add("active");
+    }
+
+    function setTransparency(val) {
+      transparency = parseFloat(val);
+      document.querySelectorAll(".note-card").forEach(card => {
+        card.style.opacity = transparency;
+      });
+    }
+
+    function toggleDarkMode() {
+      darkMode = !darkMode;
+      document.body.classList.toggle("dark-mode", darkMode);
+      document.getElementById("darkToggle").textContent = darkMode ? "☀️" : "🌙";
+    }
+
+    function toggleTopmost() {
+      // In web, simulate always-on-top
+      document.querySelector(".window-chrome").style.position = "sticky";
+      document.querySelector(".window-chrome").style.top = "0";
+      document.querySelector(".window-chrome").style.zIndex = "100";
+    }
+
+    function filterNotes() {
+      const query = document.querySelector(".search-box").value.toLowerCase();
+      const grid = document.getElementById("notesGrid");
+      if (!query) {
+        renderNotes();
+        return;
+      }
+      const filtered = notes.filter(n =>
+        n.text.toLowerCase().includes(query) ||
+        n.content.toLowerCase().includes(query) ||
+        n.tags.some(t => t.toLowerCase().includes(query))
+      );
+      grid.innerHTML = "";
+      filtered.forEach(note => {
+        const el = createNoteElement(note, 0);
+        grid.appendChild(el);
+      });
+    }
+
+    // ===== Daily note (Tier C) =====
+    function createDailyNote() {
+      const today = new Date().toISOString().split("T")[0];
+      const exists = notes.find(n => n.text.startsWith("Daily Note"));
+      if (exists) {
+        alert("Today's note already exists!");
+        return;
+      }
+      const todayNote = {
+        id: `daily-${today}`,
+        text: `📅 Daily Note: ${today}`,
+        content: "## Today's Tasks\n\n- [ ] \n\n## Notes\n\n",
+        color: "yellow",
+        pinned: true,
+        order: -1,
+        tags: ["daily"],
+        links: [],
+        always_on_top: false
+      };
+      notes.unshift(todayNote);
+      renderNotes();
+    }
+
+    // ===== Templates (Tier B) =====
+    function showTemplates() {
+      document.getElementById("templateModal").style.display = "block";
+    }
+
+    function closeTemplates() {
+      document.getElementById("templateModal").style.display = "none";
+    }
+
+    function applyTemplate(type) {
+      const templates = {
+        shopping: "🛒 Shopping List\n\n- [ ] \n- [ ] \n- [ ] ",
+        todo: "✅ TODO\n\n- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3",
+        journal: "📔 Daily Journal\n\n## Gratitude\n\n## Wins\n\n## Challenges\n\n## Tomorrow",
+        meeting: "👥 Meeting Notes\n\n**Attendees:**\n\n**Agenda:**\n\n**Decisions:**\n\n**Action Items:**",
+        brainstorm: "💡 Brainstorm\n\n## Problem\n\n## Ideas\n\n1. \n2. \n3. \n\n## Best Solutions"
+      };
+      const newNote = {
+        id: Date.now().toString(),
+        text: `${type} template`,
+        content: templates[type] || "New note",
+        color: currentColor,
+        pinned: false,
+        order: notes.length,
+        tags: [type],
+        links: [],
+        always_on_top: false
+      };
+      notes.push(newNote);
+      closeTemplates();
+      renderNotes();
+    }
+
+    // ===== Graph view (Tier C) =====
+    function showGraphView() {
+      const modal = document.getElementById("graphModal");
+      modal.classList.add("show");
+      const canvas = document.getElementById("graphCanvas");
+
+      // Generate graph nodes
+      let html = "";
+      const centerX = 300;
+      const centerY = 200;
+      notes.forEach((note, i) => {
+        const angle = (i / notes.length) * 2 * Math.PI;
+        const radius = 180;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        html += `<div class="graph-node" style="left: ${x}px; top: ${y}px; ${note.pinned ? 'border-color: var(--color-primary);' : ''}">
+          ${note.text.substring(0, 20)}
+        </div>`;
+      });
+      canvas.innerHTML += html;
+    }
+
+    function closeGraphView() {
+      document.getElementById("graphModal").classList.remove("show");
+    }
+
+    // Close modal when clicking outside
+    window.onclick = (e) => {
+      if (e.target === document.getElementById("graphModal")) closeGraphView();
+      if (e.target === document.getElementById("templateModal")) closeTemplates();
+    };
+
+    // ===== Context menu =====
+    function showContextMenu(x, y, noteId) {
+      // In a real app, show a custom context menu
+      const action = prompt("Actions: pin, duplicate, change color (blue/green), delete. Enter action:");
+      if (!action) return;
+
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      switch(action.toLowerCase()) {
+        case "pin": togglePin(noteId); break;
+        case "duplicate":
+          notes.push({ ...note, id: Date.now().toString(), text: note.text + " (copy)" });
+          renderNotes();
+          break;
+        case "blue": note.color = "blue"; renderNotes(); break;
+        case "green": note.color = "green"; renderNotes(); break;
+        case "delete": deleteNote(noteId); break;
+      }
+    }
+
+    // ===== AI Integration (Tier 4) =====
+    function getRelatedNotes(id) {
+      const note = notes.find(n => n.id === id);
+      if (!note) return [];
+      return notes
+        .filter(n => n.id !== id && (n.tags.some(t => note.tags.includes(t)) || note.links?.includes(n.id)))
+        .map(n => n.text);
+    }
+
+    function suggestTags(content) {
+      const tagHints = {
+        "urgent": /\b(urgent|asap|important|deadline)\b/i,
+        "todo": /\b(todo|task|action|need to)\b/i,
+        "idea": /\b(idea|brainstorm|maybe|could)\b/i,
+        "meeting": /\b(meeting|discuss|call|sync)\b/i,
+        "personal": /\b(personal|family|fyi|reminder)\b/i
+      };
+      return Object.entries(tagHints)
+        .filter(([_, regex]) => regex.test(content))
+        .map(([tag]) => tag)
+        .join(", ");
+    }
+
+    function autoTag(id) {
+      const note = notes.find(n => n.id === id);
+      if (note) {
+        const suggested = suggestTags(note.content);
+        if (suggested) {
+          note.tags = [...new Set([...note.tags, ...suggested.split(", ")])];
+          renderNotes();
+        }
+      }
+      document.querySelector(`#ai-suggestions-${id}`).classList.remove("show");
+    }
+
+    function applySuggestion(id, text) {
+      const note = notes.find(n => n.id === id);
+      if (note) note.content += "\n" + text;
+      renderNotes();
+    }
+
+    // Show AI suggestions on note hover
+    document.addEventListener("DOMContentLoaded", () => {
+      const notesGrid = document.getElementById("notesGrid");
+      notesGrid?.addEventListener("mouseenter", (e) => {
+        const card = e.target.closest(".note-card");
+        if (card) {
+          const id = card.dataset.id;
+          const suggestions = document.getElementById(`ai-suggestions-${id}`);
+          if (suggestions) suggestions.classList.add("show");
+        }
+      }, true);
+
+      notesGrid?.addEventListener("mouseleave", (e) => {
+        const card = e.target.closest(".note-card");
+        if (card) {
+          const id = card.dataset.id;
+          const suggestions = document.getElementById(`ai-suggestions-${id}`);
+          if (suggestions) suggestions.classList.remove("show");
+        }
+      }, true);
+
+      renderNotes();
+    });
+  </script>
+</body>
+</html>
