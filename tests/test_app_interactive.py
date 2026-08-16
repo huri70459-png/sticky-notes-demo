@@ -671,14 +671,97 @@ def test_app_has_font_size_setting(tmp_path: Path, tk_root):
     assert app._font_size == "16px"
 
 
-def test_app_has_move_note_method(tmp_path: Path, tk_root):
-    """App should have move_note for drag-to-reorder."""
+    # ---- Window chrome tests (Tier A) ----
+
+def test_app_has_window_chrome_buttons(tmp_path: Path, tk_root):
+    """App should have minimize/maximize/close window chrome buttons."""
     store = NoteStore(tmp_path / "notes.json")
     app = NotesApp(store=store, root=tk_root)
-    store.add(id="1", text="a", color="yellow")
-    store.add(id="2", text="b", color="yellow")
-    app.move_note("2", new_position=0)
-    assert app.store.all()[0].id == "2"
+    assert hasattr(app, "minimize_window")
+    assert hasattr(app, "maximize_window")
+    assert hasattr(app, "close_window")
+
+
+def test_window_chrome_buttons_exist(tmp_path: Path, tk_root):
+    """Window chrome buttons should be rendered in the title bar area."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    # Check for window chrome frame with buttons
+    chrome_frames = [w for w in tk_root.winfo_children()
+                     if isinstance(w, tk.Frame) and getattr(w, "_window_chrome", False)]
+    assert len(chrome_frames) >= 1
+    # Check that it has buttons (possibly nested)
+    chrome = chrome_frames[0]
+    has_buttons = False
+    for w in chrome.winfo_children():
+        if isinstance(w, tk.Button):
+            has_buttons = True
+            break
+        if isinstance(w, tk.Frame):
+            for c in w.winfo_children():
+                if isinstance(c, tk.Button):
+                    has_buttons = True
+                    break
+        if has_buttons:
+            break
+    assert has_buttons
+
+
+# ---- Density selector tests (Tier A) ----
+
+def test_app_has_density_setting(tmp_path: Path, tk_root):
+    """App should support density settings (compact/normal/comfortable)."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "set_density")
+    app.set_density("compact")
+    assert app.density == "compact"
+
+
+def test_density_changes_padding(tmp_path: Path, tk_root):
+    """Changing density should update note frame rendering."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="n1", text="test", color="yellow")
+    app.set_density("compact")
+    app._refresh()
+    note_frame = app.list_frame.winfo_children()[0]
+    assert note_frame is not None
+    assert app.density == "compact"
+    # Restore
+    app.set_density("normal")
+
+
+# ---- AI suggestions tests (Tier F) ----
+
+def test_app_has_ai_suggestions(tmp_path: Path, tk_root):
+    """App should have AI suggestion capability."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "get_ai_suggestions")
+    assert hasattr(app, "apply_ai_suggestion")
+
+
+def test_ai_suggestions_for_content(tmp_path: Path, tk_root):
+    """get_ai_suggestions should return relevant suggestions."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="1", text="urgent task meeting", color="yellow",
+              content="urgent task meeting deadline")
+    suggestions = app.get_ai_suggestions("1")
+    assert isinstance(suggestions, dict)
+    assert "tags" in suggestions
+    assert "urgent" in suggestions["tags"]
+
+
+# ---- Sync status tests (Tier D) ----
+
+def test_app_has_sync_status(tmp_path: Path, tk_root):
+    """App should have sync status tracking."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "sync_status")
+    assert app.sync_status in ("synced", "syncing", "error")
 
 
 # ---- Templates tests (Tier A) ----

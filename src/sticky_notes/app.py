@@ -30,6 +30,8 @@ class NotesApp:
         self._font_size: str = "14px"
         self._font_size_num: int = 10
         self._context_target: str | None = None
+        self.density = "normal"  # compact / normal / comfortable
+        self.sync_status = "synced"  # synced / syncing / error
         self._build_ui()
         self._create_context_menu()
         self._focus_note_id = None
@@ -57,6 +59,27 @@ class NotesApp:
             self._refresh()
 
     def _build_ui(self) -> None:
+        # Window Chrome — Tier A
+        self.chrome = tk.Frame(self.root, bg="#ffffff",
+                               highlightbackground="#e0e0e0", highlightthickness=1)
+        self.chrome.pack(fill="x", padx=12, pady=4)
+        self.chrome._window_chrome = True
+
+        tk.Label(self.chrome, text="📝 Sticky Notes",
+                 font=("Segoe UI", 9, "bold"), bg="#ffffff").pack(side="left")
+
+        chrome_btns = tk.Frame(self.chrome, bg="#ffffff")
+        chrome_btns.pack(side="right")
+        tk.Button(chrome_btns, text="−", width=3,
+                  command=self.minimize_window,
+                  font=("Segoe UI", 8), relief="flat").pack(side="left", padx=1)
+        tk.Button(chrome_btns, text="□", width=3,
+                  command=self.maximize_window,
+                  font=("Segoe UI", 8), relief="flat").pack(side="left", padx=1)
+        tk.Button(chrome_btns, text="✕", width=3,
+                  command=self.close_window,
+                  font=("Segoe UI", 8), relief="flat").pack(side="left", padx=1)
+
         # Toolbar — top bar
         self.toolbar = tk.Frame(self.root, bg="#ffffff", relief="flat",
                                 highlightbackground="#e0e0e0", highlightthickness=1)
@@ -140,6 +163,14 @@ class NotesApp:
         font_size_select.config(font=("Segoe UI", 8), width=8, relief="flat",
                                 bg="#ffffff", activebackground="#f0f0f0")
         font_size_select.pack(side="right", padx=(0, 8))
+
+        # Density selector — Tier A
+        density_var = tk.StringVar(value="normal")
+        density_select = tk.OptionMenu(self.toolbar, density_var, "compact", "normal", "comfortable",
+                                       command=self.set_density)
+        density_select.config(font=("Segoe UI", 8), width=8, relief="flat",
+                              bg="#ffffff", activebackground="#f0f0f0")
+        density_select.pack(side="right", padx=(0, 8))
 
         # Templates button — Tier A
         tk.Button(self.toolbar, text="📋",
@@ -319,6 +350,47 @@ class NotesApp:
         """Set the global font size for note text."""
         self._font_size = size
         self._font_size_num = int(size.replace("px", ""))
+        self._refresh()
+
+    def set_density(self, density: str) -> None:
+        """Set note density (compact/normal/comfortable)."""
+        self.density = density
+        self._refresh()
+
+    def minimize_window(self) -> None:
+        """Minimize the window."""
+        self.root.iconify()
+
+    def maximize_window(self) -> None:
+        """Toggle maximize/restore the window."""
+        geom = self.root.geometry()
+        if geom == self.root.maxsize():
+            self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+        else:
+            self.root.geometry("800x600+100+100")
+
+    def close_window(self) -> None:
+        """Close the application."""
+        self.root.destroy()
+
+    def get_ai_suggestions(self, note_id: str) -> dict:
+        """Return AI-powered suggestions for a note (tags + link suggestions)."""
+        note = self.store.all_for_id(note_id)
+        if not note:
+            return {"tags": [], "links": []}
+        suggested_tags = self.suggest_tags(note.content or note.text)
+        suggested_links = self.suggest_links(note_id)
+        return {"tags": suggested_tags, "links": suggested_links}
+
+    def apply_ai_suggestion(self, note_id: str, suggestion_type: str, value: str) -> None:
+        """Apply an AI suggestion to a note (add tag or link)."""
+        note = self.store.all_for_id(note_id)
+        if not note:
+            return
+        if suggestion_type == "tag" and value not in note.tags:
+            self.store.add_tag(note_id, value)
+        elif suggestion_type == "link" and value not in note.links:
+            self.store.add_link(note_id, value)
         self._refresh()
 
     def show_templates_menu(self) -> None:
@@ -525,15 +597,17 @@ class NotesApp:
 
     def _sync_notes(self) -> None:
         """Push notes to remote sync."""
+        self.sync_status = "syncing"
         try:
             from .sync import GitSync
             from pathlib import Path
             sync_dir = Path.home() / ".sticky_notes_sync"
             sync = GitSync(sync_dir, self.store)
             sync.push()
+            self.sync_status = "synced"
             self._refresh()
         except Exception:
-            pass
+            self.sync_status = "error"
 
     # ===== Graph View (Tier C) =====
 
