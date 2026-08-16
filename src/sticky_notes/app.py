@@ -35,8 +35,17 @@ class NotesApp:
         for widget in self.list_frame.winfo_children():
             widget.destroy()
         for note in self.store.all():
-            label = tk.Label(self.list_frame, text=note.text, bg=note.color, width=20, height=5)
-            label.pack(pady=4)
+            frame = tk.Frame(self.list_frame, relief="raised", bd=1)
+            label = tk.Label(frame, text=note.text, bg=note.color, width=20, height=5)
+            label.pack(side="left")
+            del_btn = tk.Button(frame, text="×", width=3,
+                                command=lambda nid=note.id: self.delete_note(nid))
+            del_btn.pack(side="right", padx=(4, 0))
+            frame.pack(pady=4)
+
+    def delete_note(self, note_id: str) -> None:
+        self.store.delete(note_id)
+        self._refresh()
 
     def note_count(self) -> int:
         return len(self.store.all())

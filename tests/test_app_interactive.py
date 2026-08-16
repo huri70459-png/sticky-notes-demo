@@ -34,3 +34,28 @@ def test_add_note_empty_text_does_nothing(tmp_path: Path):
     app.add_entry.delete(0, tk.END)
     app.add_note()  # nothing typed
     assert app.note_count() == 0
+
+
+def test_notes_have_delete_buttons(tmp_path: Path):
+    """Each note should render with a Delete button."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="n1", text="test", color="yellow")
+    app._refresh()
+    buttons = [w for w in app.list_frame.winfo_children()
+               if isinstance(w, tk.Frame)
+               and any(isinstance(c, tk.Button) for c in w.winfo_children())]
+    assert len(buttons) >= 1
+
+
+def test_delete_note_removes_from_store(tmp_path: Path):
+    """Calling delete_note should remove the note from the store."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="n1", text="test", color="yellow")
+    store.add(id="n2", text="second", color="pink")
+    app.delete_note("n1")
+    assert app.note_count() == 1
+    remaining = app.store.all()
+    assert len(remaining) == 1
+    assert remaining[0].id == "n2"
