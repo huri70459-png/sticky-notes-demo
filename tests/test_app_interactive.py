@@ -368,3 +368,58 @@ def test_note_text_links_parsed(tmp_path: Path):
     store.add(id="A", text="See [[B]] for details", color="yellow")
     note = store.all_for_id("A")
     assert "B" in note.links
+
+
+# ---- Tag tests ----
+
+def test_note_has_tags_field():
+    """New Note should have an empty tags list."""
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert hasattr(note, "tags")
+    assert note.tags == []
+
+
+def test_store_saves_tags(tmp_path: Path):
+    """Tags should persist to JSON."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="buy milk", color="yellow", tags=["groceries", "todo"])
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].tags == ["groceries", "todo"]
+
+
+def test_filter_by_tag(tmp_path: Path):
+    """filter_by_tag should return notes with that tag."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="buy milk", color="yellow", tags=["groceries"])
+    store.add(id="2", text="feed cat", color="pink", tags=["personal"])
+    store.add(id="3", text="buy bread", color="cyan", tags=["groceries"])
+    result = store.filter_by_tag("groceries")
+    assert len(result) == 2
+    assert {n.id for n in result} == {"1", "3"}
+
+
+def test_all_tags(tmp_path: Path):
+    """all_tags should return unique tag names."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="a", color="yellow", tags=["todo", "work"])
+    store.add(id="2", text="b", color="pink", tags=["work", "personal"])
+    tags = store.all_tags()
+    assert set(tags) == {"todo", "work", "personal"}
+
+
+def test_add_tag(tmp_path: Path):
+    """Adding a tag to a note should persist."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    store.add_tag("1", "urgent")
+    assert "urgent" in store.all_for_id("1").tags
+
+
+def test_tags_parsed_from_text(tmp_path: Path):
+    """#tag in note text should auto-generate tags."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="buy milk #grocery #todo", color="yellow")
+    note = store.all_for_id("1")
+    assert "grocery" in note.tags
+    assert "todo" in note.tags

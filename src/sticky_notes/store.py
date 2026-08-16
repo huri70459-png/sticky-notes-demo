@@ -6,6 +6,8 @@ from .note import Note
 
 # Pattern to match [[id]] wiki-style links
 _LINK_RE = re.compile(r'\[\[([^\]]+)\]\]')
+# Pattern to match #tag hashtags
+_TAG_RE = re.compile(r'#(\w+)')
 
 
 class NoteStore:
@@ -37,7 +39,7 @@ class NoteStore:
     def add(self, *, id: str | None = None, text: str, color: str = "yellow",
             pinned: bool = False, width: int = 200, height: int = 100,
             content: str = "", always_on_top: bool = False,
-            links: list | None = None) -> Note:
+            links: list | None = None, tags: list | None = None) -> Note:
         notes = self.all()
         new_note = Note(
             id=id or str(uuid.uuid4()),
@@ -54,6 +56,11 @@ class NoteStore:
             new_note.links = list(links)
         else:
             new_note.links = self._extract_links(text)
+        # Auto-parse #tags from text
+        if tags is not None:
+            new_note.tags = list(tags)
+        else:
+            new_note.tags = self._extract_tags(text)
         notes.append(new_note)
         self._write(notes)
         return new_note
@@ -61,7 +68,17 @@ class NoteStore:
     def _extract_links(self, text: str) -> list[str]:
         """Extract [[id]] wiki-links from text."""
         matches = _LINK_RE.findall(text)
-        # Deduplicate while preserving order
+        seen: set[str] = set()
+        result: list[str] = []
+        for m in matches:
+            if m not in seen:
+                seen.add(m)
+                result.append(m)
+        return result
+
+    def _extract_tags(self, text: str) -> list[str]:
+        """Extract #tag hashtags from text."""
+        matches = _TAG_RE.findall(text)
         seen: set[str] = set()
         result: list[str] = []
         for m in matches:
@@ -73,7 +90,7 @@ class NoteStore:
     def _write(self, notes: list[Note]) -> None:
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
                  "width": n.width, "height": n.height, "content": n.content,
-                 "always_on_top": n.always_on_top, "links": n.links}
+                 "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags}
                 for n in notes]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -83,7 +100,8 @@ class NoteStore:
                width: int | None = None, height: int | None = None,
                content: str | None = None,
                always_on_top: bool | None = None,
-               links: list | None = None) -> None:
+               links: list | None = None,
+               tags: list | None = None) -> None:
         notes = self.all()
         for n in notes:
             if n.id == note_id:
@@ -103,6 +121,8 @@ class NoteStore:
                     n.always_on_top = always_on_top
                 if links is not None:
                     n.links = list(links)
+                if tags is not None:
+                    n.tags = list(tags)
                 break
         self._write(notes)
 
@@ -139,5 +159,36 @@ class NoteStore:
             if n.id == from_id:
                 if to_id not in n.links:
                     n.links.append(to_id)
+                break
+        self._write(notes)
+
+    def filter_by_tag(self, tag: str) -> list[Note]:
+        """Return notes that have the given tag."""
+        return [n for n in self.all() if tag in n.tags]
+
+    def all_tags(self) -> set[str]:
+        """Return all unique tag names across all notes."""
+        tags: set[str] = set()
+        for n in self.all():
+            tags.update(n.tags)
+        return tags
+
+    def add_tag(self, note_id: str, tag: str) -> None:
+        """Add a tag to a note if it doesn't already have it."""
+        notes = self.all()
+        for n in notes:
+            if n.id == note_id:
+                if tag not in n.tags:
+                    n.tags.append(tag)
+                break
+        self._write(notes)
+
+    def remove_tag(self, note_id: str, tag: str) -> None:
+        """Remove a tag from a note."""
+        notes = self.all()
+        for n in notes:
+            if n.id == note_id:
+                if tag in n.tags:
+                    n.tags.remove(tag)
                 break
         self._write(notes)
