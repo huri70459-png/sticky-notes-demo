@@ -1,6 +1,7 @@
 """Sync backends for Sticky Notes.
 
-Provides a pluggable sync layer: GitSync (git repo) and SimpleAPISync (REST API).
+Provides a pluggable sync layer: GitSync (git repo), SimpleAPISync (REST API),
+and CloudSync (OAuth-authenticated cloud sync).
 Each backend implements push() and pull() to synchronize the local JSON store
 with a remote source.
 """
@@ -8,6 +9,7 @@ import abc
 import json
 import subprocess
 from pathlib import Path
+
 from .note import Note
 from .store import NoteStore
 
@@ -58,7 +60,6 @@ class GitSync(SyncBackend):
         if notes is None:
             notes = self.store.all()
 
-        # Write notes as JSON
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
                  "width": n.width, "height": n.height, "content": n.content,
                  "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags,
@@ -78,7 +79,7 @@ class GitSync(SyncBackend):
         try:
             self._run_git(["pull"])
         except RuntimeError:
-            pass  # No remote configured — local-only repo
+            pass
 
         notes_path = self.repo_path / self.notes_file
         if not notes_path.exists():
@@ -86,7 +87,6 @@ class GitSync(SyncBackend):
 
         data = json.loads(notes_path.read_text(encoding="utf-8"))
         notes = [Note(**n) for n in data]
-        # Overwrite local store with remote state
         self.store._write(notes)
         return notes
 
@@ -122,7 +122,6 @@ class SimpleAPISync(SyncBackend):
     def push(self, notes: list[Note] | None = None) -> None:
         """Push local notes to the REST API."""
         import requests as _base_requests
-        # Allow test mock injection via module-level _requests
         import sticky_notes.sync as _self
         req = getattr(_self, "_requests", _base_requests)
         if notes is None:
@@ -144,3 +143,75 @@ class SimpleAPISync(SyncBackend):
         notes = [Note(**n) for n in data]
         self.store._write(notes)
         return notes
+
+
+class CloudSync(SyncBackend):
+    """Sync via OAuth-authenticated cloud API.
+
+    Uses an AuthBackend provider to obtain an access token, then pushes/pulls
+    notes to/from a cloud endpoint. Falls back to api_key when no OAuth token
+    is cached.
+    """
+
+    def __init__(self, store: NoteStore | None, endpoint: str,
+                 auth_provider, api_key: str | None = None):
+        self.store = store
+        self.endpoint = endpoint
+        self.auth_provider = auth_provider
+        self.api_key = api_key
+        self._timeout = 30
+
+    def _headers(self) -> dict:
+        token = self.auth_provider.get_token_cached()
+        if token:
+            return {"Content-Type": "application/json",
+                    "Authorization": f"Bearer {token}"}
+        elif self.api_key:
+            return {"Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"}
+        return {"Content-Type": "application/json"}
+
+    def _serialize(self, notes: list) -> list[dict]:
+        """Serialize notes to dicts — accepts Note objects or plain dicts."""
+        result = []
+        for n in notes:
+            if isinstance(n, dict):
+                result.append(n)
+            else:
+                result.append({
+                    "id": n.id, "text": n.text, "color": n.color,
+                    "pinned": n.pinned, "width": n.width, "height": n.height,
+                    "content": n.content, "always_on_top": n.always_on_top,
+                    "links": n.links, "tags": n.tags, "order": n.order,
+                })
+        return result
+
+    def push(self, notes: list | None = None) -> None:
+        """Push local notes to cloud with OAuth token."""
+        import requests as _base_requests
+        import sticky_notes.sync as _self
+        req = getattr(_self, "_requests", _base_requests)
+        if notes is None:
+            if self.store is not None:
+                notes = self.store.all()
+            else:
+                notes = []
+        data = self._serialize(notes)
+        req.post(self.endpoint, json=data, headers=self._headers(),
+                 timeout=self._timeout)
+
+    def pull(self) -> list[Note]:
+        """Pull notes from cloud with OAuth token."""
+        import requests as _base_requests
+        import sticky_notes.sync as _self
+        req = getattr(_self, "_requests", _base_requests)
+        resp = req.get(self.endpoint, headers=self._headers(),
+                       timeout=self._timeout)
+        data = resp.json()
+        if not isinstance(data, list):
+            data = []
+        if self.store is not None:
+            notes = [Note(**n) for n in data]
+            self.store._write(notes)
+            return notes
+        return [Note(**n) for n in data]

@@ -184,12 +184,12 @@ class NotesApp:
                   font=("Segoe UI", 10), width=3,
                   relief="flat", bg="#ffffff").pack(side="right", padx=(0, 4))
 
-        # Sync toggle button
-        self.sync_btn = tk.Button(self.toolbar, text="☁️ Sync",
+        # Sync toggle button — shows status (🔵 synced, 🟡 syncing, 🔴 error)
+        self.sync_status_var = tk.StringVar(value="🔵")
+        self.sync_btn = tk.Button(self.toolbar, textvariable=self.sync_status_var,
                                   command=self._sync_notes,
-                                  font=("Segoe UI", 9), bg="#ffffff",
-                                  activebackground="#f0f0f0",
-                                  relief="flat")
+                                  font=("Segoe UI", 10), width=3,
+                                  relief="flat", bg="#ffffff")
         self.sync_btn.pack(side="right", padx=(0, 4))
 
         # File menu
@@ -598,6 +598,7 @@ class NotesApp:
     def _sync_notes(self) -> None:
         """Push notes to remote sync."""
         self.sync_status = "syncing"
+        self.sync_status_var.set("🟡")
         try:
             from .sync import GitSync
             from pathlib import Path
@@ -608,6 +609,9 @@ class NotesApp:
             self._refresh()
         except Exception:
             self.sync_status = "error"
+        # Update sync button status indicator
+        status_emoji = {"synced": "🔵", "syncing": "🟡", "error": "🔴"}.get(self.sync_status, "🔵")
+        self.sync_status_var.set(status_emoji)
 
     # ===== Graph View (Tier C) =====
 
