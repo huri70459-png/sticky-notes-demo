@@ -9,7 +9,6 @@ class NotesApp:
         self._build_ui()
 
     def _build_ui(self) -> None:
-        self.current_color = "yellow"
         self.list_frame = tk.Frame(self.root)
         self.list_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -20,9 +19,19 @@ class NotesApp:
         self.add_entry.pack(side="left", padx=(0, 8))
 
         self.add_button = tk.Button(self.form_frame, text="Add", command=self.add_note)
-        self.add_button.pack(side="left")
+        self.add_button.pack(side="left", padx=(0, 8))
+
+        self.current_color = "yellow"
+        for color in ("yellow", "pink", "cyan"):
+            b = tk.Button(self.form_frame, text="", width=3, bg=color,
+                          command=lambda c=color: self.set_color(c))
+            b._color = True  # marker for test discovery
+            b.pack(side="left", padx=2)
 
         self._refresh()
+
+    def set_color(self, color: str) -> None:
+        self.current_color = color
 
     def add_note(self) -> None:
         text = self.add_entry.get().strip()

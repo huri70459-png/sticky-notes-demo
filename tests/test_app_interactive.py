@@ -70,3 +70,36 @@ def test_edit_note_updates_text(tmp_path: Path):
     app.edit_note("n1", "new text")
     reloaded = NoteStore(tmp_path / "notes.json")
     assert reloaded.all()[0].text == "new text"
+
+
+# ---- Color picker tests ----
+
+PRESET_COLORS = ["yellow", "pink", "cyan"]
+
+
+def test_color_picker_buttons_exist(tmp_path: Path):
+    """At least the preset color buttons must be rendered."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    color_btns = [w for w in app.form_frame.winfo_children()
+                  if getattr(w, "_color", False)]
+    assert len(color_btns) >= 3
+
+
+def test_set_color_changes_current_color(tmp_path: Path):
+    """Selecting a color should update the current color."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    app.set_color("pink")
+    assert app.current_color == "pink"
+
+
+def test_add_note_uses_selected_color(tmp_path: Path):
+    """A new note should be stored with the currently selected color."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    app.add_entry.delete(0, tk.END)
+    app.add_entry.insert(0, "colored note")
+    app.set_color("cyan")
+    app.add_note()
+    assert app.store.all()[0].color == "cyan"
