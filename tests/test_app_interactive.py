@@ -206,3 +206,29 @@ def test_toggle_dark_mode_changes_root_bg(tmp_path: Path, tk_root):
     app.toggle_dark_mode()
     dark_bg = app.root.cget("bg")
     assert light_bg != dark_bg
+
+
+# ---- Note sizing tests ----
+
+def test_note_has_size_fields():
+    """New Note should have width and height fields with defaults."""
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert hasattr(note, "width")
+    assert hasattr(note, "height")
+
+
+def test_note_default_size():
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert note.width > 0
+    assert note.height > 0
+
+
+def test_store_saves_note_size(tmp_path: Path):
+    """Note width/height should persist to JSON."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow", width=300, height=150)
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].width == 300
+    assert reloaded.all()[0].height == 150

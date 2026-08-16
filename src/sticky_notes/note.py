@@ -6,3 +6,5 @@ class Note:
     text: str
     color: str
     pinned: bool = False
+    width: int = 200
+    height: int = 100

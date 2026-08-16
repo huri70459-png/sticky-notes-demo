@@ -84,13 +84,14 @@ class NotesApp:
         for note in notes:
             frame = tk.Frame(self.list_frame, relief="raised", bd=1)
 
-            edit_entry = tk.Entry(frame, width=20, fg=note.color)
-            edit_entry.insert(0, note.text)
-            edit_entry.pack(side="left")
+            text_widget = tk.Text(frame, width=20, height=4, fg=note.color,
+                                  font=("Consolas", 10), wrap="word")
+            text_widget.insert("1.0", note.text)
+            text_widget.pack(side="left")
 
             save_btn = tk.Button(
                 frame, text="Save", width=5,
-                command=lambda nid=note.id, e=edit_entry: self.edit_note(nid, e.get()),
+                command=lambda nid=note.id, e=text_widget: self.edit_note(nid, e.get("1.0", tk.END)),
             )
             save_btn.pack(side="left", padx=(4, 0))
 
@@ -105,7 +106,7 @@ class NotesApp:
             frame.pack(pady=4)
 
     def edit_note(self, note_id: str, new_text: str) -> None:
-        self.store.update(note_id, text=new_text)
+        self.store.update(note_id, text=new_text.rstrip("\n"))
         self._refresh()
 
     def delete_note(self, note_id: str) -> None:
