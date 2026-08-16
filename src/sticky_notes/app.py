@@ -505,9 +505,9 @@ class NotesApp:
                                   relief="flat",
                                   borderwidth=0,
                                   highlightthickness=0)
-            text_widget.bind("<ButtonPress-1>", lambda e: e.widget.master._on_drag_start(e, e.widget.master))
-            text_widget.bind("<B1-Motion>", lambda e: e.widget.master._on_drag_motion(e, e.widget.master))
-            text_widget.bind("<ButtonRelease-1>", lambda e: e.widget.master._on_drag_drop(e, e.widget.master))
+            text_widget.bind("<ButtonPress-1>", lambda e: self._on_drag_start(e, e.widget.master))
+            text_widget.bind("<B1-Motion>", lambda e: self._on_drag_motion(e, e.widget.master))
+            text_widget.bind("<ButtonRelease-1>", lambda e: self._on_drag_drop(e, e.widget.master))
             self._render_content(text_widget, note.content or note.text)
             text_widget.pack(fill="both", expand=True, side="top")
             text_widget.bind("<FocusIn>", lambda e, nid=note.id, tw=text_widget: self._on_note_focus(nid, tw))
