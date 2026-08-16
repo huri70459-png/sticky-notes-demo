@@ -232,3 +232,35 @@ def test_store_saves_note_size(tmp_path: Path):
     reloaded = NoteStore(tmp_path / "notes.json")
     assert reloaded.all()[0].width == 300
     assert reloaded.all()[0].height == 150
+
+
+# ---- Rich text tests ----
+
+def test_note_has_content_field():
+    """Note should have a content field for rich text (markdown)."""
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert hasattr(note, "content")
+    assert note.content == ""
+
+
+def test_store_saves_content(tmp_path: Path):
+    """Content (markdown) should persist."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow", content="**bold** text")
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].content == "**bold** text"
+
+
+def test_rich_text_applies_bold_tag(tmp_path: Path, tk_root):
+    """Text containing **bold** should have 'bold' tag applied in the Text widget."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="n1", text="test", color="yellow", content="**bold** text")
+    app._refresh()
+    # Get the text widget from the first note frame
+    note_frame = app.list_frame.winfo_children()[0]
+    text_widget = [w for w in note_frame.winfo_children() if isinstance(w, tk.Text)][0]
+    # The bold tag should be applied to "bold"
+    tags = text_widget.tag_names("1.0")
+    assert "bold" in tags

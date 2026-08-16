@@ -8,3 +8,4 @@ class Note:
     pinned: bool = False
     width: int = 200
     height: int = 100
+    content: str = ""

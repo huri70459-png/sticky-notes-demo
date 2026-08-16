@@ -23,7 +23,8 @@ class NoteStore:
         return [n for n in self.all() if q in n.text.lower()]
 
     def add(self, *, id: str | None = None, text: str, color: str = "yellow",
-            pinned: bool = False, width: int = 200, height: int = 100) -> Note:
+            pinned: bool = False, width: int = 200, height: int = 100,
+            content: str = "") -> Note:
         notes = self.all()
         new_note = Note(
             id=id or str(uuid.uuid4()),
@@ -32,6 +33,7 @@ class NoteStore:
             pinned=pinned,
             width=width,
             height=height,
+            content=content,
         )
         notes.append(new_note)
         self._write(notes)
@@ -39,14 +41,15 @@ class NoteStore:
 
     def _write(self, notes: list[Note]) -> None:
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
-                 "width": n.width, "height": n.height}
+                 "width": n.width, "height": n.height, "content": n.content}
                 for n in notes]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def update(self, note_id: str, *, text: str | None = None,
                color: str | None = None, pinned: bool | None = None,
-               width: int | None = None, height: int | None = None) -> None:
+               width: int | None = None, height: int | None = None,
+               content: str | None = None) -> None:
         notes = self.all()
         for n in notes:
             if n.id == note_id:
@@ -60,6 +63,8 @@ class NoteStore:
                     n.width = width
                 if height is not None:
                     n.height = height
+                if content is not None:
+                    n.content = content
                 break
         self._write(notes)
 

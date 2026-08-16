@@ -77,6 +77,55 @@ class NotesApp:
             self.add_entry.delete(0, tk.END)
             self._refresh()
 
+    def _render_content(self, text_widget: tk.Text, content: str) -> None:
+        """Parse simple markdown (**bold**, *italic*) and apply Tags to text_widget."""
+        text_widget.tag_configure("bold", font=("Consolas", 10, "bold"))
+        text_widget.tag_configure("italic", font=("Consolas", 10, "italic"))
+
+        # Simple state machine: iterate through content, track bold/italic spans
+        plain = content.replace("**", "").replace("*", "")
+        text_widget.insert("1.0", plain)
+
+        # Find bold spans
+        idx = 0
+        search_text = content
+        while True:
+            start = search_text.find("**", idx)
+            if start == -1:
+                break
+            end = search_text.find("**", start + 2)
+            if end == -1:
+                break
+            inner = content[:start].replace("**", "").replace("*", "")
+            inner_end = content[:end].replace("**", "").replace("*", "")
+            start_pos = f"1.0+{len(inner)}c"
+            end_pos = f"1.0+{len(inner_end)}c"
+            text_widget.tag_add("bold", start_pos, end_pos)
+            search_text = search_text[:start] + "  " + search_text[start + 2:]
+            search_text = search_text[:end - 2] + "  " + search_text[end:]
+            idx = end
+
+        # Find italic spans (single asterisk)
+        search_text2 = content
+        idx = 0
+        while True:
+            start = search_text2.find("*", idx)
+            if start == -1:
+                break
+            # Skip if this is part of **
+            if start + 1 < len(search_text2) and search_text2[start + 1] == "*":
+                idx = start + 2
+                continue
+            end = search_text2.find("*", start + 1)
+            if end == -1:
+                break
+            inner = content[:start].replace("**", "").replace("*", "")
+            inner_end = content[:end].replace("**", "").replace("*", "")
+            start_pos = f"1.0+{len(inner)}c"
+            end_pos = f"1.0+{len(inner_end)}c"
+            text_widget.tag_add("italic", start_pos, end_pos)
+            idx = end
+
     def _refresh(self) -> None:
         for widget in self.list_frame.winfo_children():
             widget.destroy()
@@ -86,7 +135,7 @@ class NotesApp:
 
             text_widget = tk.Text(frame, width=20, height=4, fg=note.color,
                                   font=("Consolas", 10), wrap="word")
-            text_widget.insert("1.0", note.text)
+            self._render_content(text_widget, note.content or note.text)
             text_widget.pack(side="left")
 
             save_btn = tk.Button(
