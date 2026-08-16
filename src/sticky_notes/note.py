@@ -5,3 +5,4 @@ class Note:
     id: str
     text: str
     color: str
+    pinned: bool = False
