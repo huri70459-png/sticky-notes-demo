@@ -1,4 +1,5 @@
 import tkinter as tk
+from pathlib import Path
 from .store import NoteStore
 
 class NotesApp:
@@ -53,6 +54,14 @@ class NotesApp:
                                        command=self.toggle_dark_mode, width=8)
         self.dark_mode_btn.pack(side="right", padx=(8, 0))
 
+        file_menu_btn = tk.Menubutton(self.form_frame, text="📁 File", relief="raised")
+        file_menu = tk.Menu(file_menu_btn, tearoff=0)
+        file_menu.add_command(label="Export Markdown...", command=self._export_markdown_dialog)
+        file_menu.add_separator()
+        file_menu.add_command(label="Quit", command=self.root.destroy)
+        file_menu_btn["menu"] = file_menu
+        file_menu_btn.pack(side="right", padx=(0, 8))
+
         self._apply_theme()
         self._bind_shortcuts()
         self._refresh()
@@ -67,6 +76,16 @@ class NotesApp:
     def _focus_add_entry(self, event=None) -> None:
         self.add_entry.delete(0, tk.END)
         self.add_entry.focus_set()
+
+    def _export_markdown_dialog(self) -> None:
+        """Open a save file dialog and export notes to markdown."""
+        from tkinter import filedialog
+        path_str = filedialog.asksaveasfilename(
+            defaultextension=".md",
+            filetypes=[("Markdown files", "*.md"), ("All files", "*.*")],
+        )
+        if path_str:
+            self.store.export_to_markdown_file(Path(path_str))
 
     def _save_active_note(self, event=None) -> None:
         """Save the currently focused note's text."""

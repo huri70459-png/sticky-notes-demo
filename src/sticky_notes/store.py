@@ -192,3 +192,24 @@ class NoteStore:
                     n.tags.remove(tag)
                 break
         self._write(notes)
+
+    def export_markdown(self) -> str:
+        """Export all notes as a markdown string."""
+        lines: list[str] = ["# Sticky Notes Export", ""]
+        for note in self.all():
+            color_label = {"yellow": "⚠️", "pink": "❤️", "cyan": "💧"}.get(note.color, "")
+            lines.append(f"## {note.text} {color_label}")
+            if note.tags:
+                lines.append(f"**Tags:** {' '.join(f'#{t}' for t in note.tags)}")
+            if note.links:
+                lines.append(f"**Links:** {' '.join(f'[[{l}]]' for l in note.links)}")
+            if note.pinned:
+                lines.append("**📌 Pinned**")
+            if note.always_on_top:
+                lines.append("**📌 Always-on-top**")
+            lines.append("")
+        return "\n".join(lines)
+
+    def export_to_markdown_file(self, path: Path) -> None:
+        """Write notes to a markdown file."""
+        path.write_text(self.export_markdown(), encoding="utf-8")

@@ -454,3 +454,27 @@ def test_app_registers_ctrl_f(tmp_path: Path, tk_root):
     app = NotesApp(store=store, root=tk_root)
     bindings = app.root.bind()
     assert "<Control-Key-f>" in bindings or "<Control-f>" in bindings
+
+
+# ---- Markdown export tests ----
+
+def test_export_to_markdown(tmp_path: Path):
+    """NoteStore.export_markdown should produce valid markdown."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="buy milk #grocery", color="yellow", tags=["grocery"])
+    store.add(id="A", text="See [[B]]", color="pink", links=["B"])
+    md = store.export_markdown()
+    assert "# buy milk" in md
+    assert "Tags:" in md
+    assert "# See [[B]]" in md
+
+
+def test_export_to_markdown_file(tmp_path: Path):
+    """export_to_markdown_file should write a .md file."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    out = tmp_path / "export.md"
+    store.export_to_markdown_file(out)
+    assert out.exists()
+    content = out.read_text(encoding="utf-8")
+    assert "# hello" in content
