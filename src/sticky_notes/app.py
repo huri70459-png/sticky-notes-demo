@@ -36,12 +36,26 @@ class NotesApp:
             widget.destroy()
         for note in self.store.all():
             frame = tk.Frame(self.list_frame, relief="raised", bd=1)
-            label = tk.Label(frame, text=note.text, bg=note.color, width=20, height=5)
-            label.pack(side="left")
+
+            edit_entry = tk.Entry(frame, width=20, fg=note.color)
+            edit_entry.insert(0, note.text)
+            edit_entry.pack(side="left")
+
+            save_btn = tk.Button(
+                frame, text="Save", width=5,
+                command=lambda nid=note.id, e=edit_entry: self.edit_note(nid, e.get()),
+            )
+            save_btn.pack(side="left", padx=(4, 0))
+
             del_btn = tk.Button(frame, text="×", width=3,
                                 command=lambda nid=note.id: self.delete_note(nid))
-            del_btn.pack(side="right", padx=(4, 0))
+            del_btn.pack(side="right")
+
             frame.pack(pady=4)
+
+    def edit_note(self, note_id: str, new_text: str) -> None:
+        self.store.update(note_id, text=new_text)
+        self._refresh()
 
     def delete_note(self, note_id: str) -> None:
         self.store.delete(note_id)

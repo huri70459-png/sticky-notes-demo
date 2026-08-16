@@ -59,3 +59,14 @@ def test_delete_note_removes_from_store(tmp_path: Path):
     remaining = app.store.all()
     assert len(remaining) == 1
     assert remaining[0].id == "n2"
+
+
+def test_edit_note_updates_text(tmp_path: Path):
+    """Calling edit_note should update the note's text in the store."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="n1", text="old text", color="yellow")
+    app._refresh()
+    app.edit_note("n1", "new text")
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].text == "new text"
