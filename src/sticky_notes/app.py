@@ -9,6 +9,7 @@ class NotesApp:
         self.current_color = "yellow"
         self.search_var = tk.StringVar()
         self._search_results: list | None = None
+        self.dark_mode = False
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -36,6 +37,24 @@ class NotesApp:
         search_entry.pack(side="left", padx=(0, 8))
         search_entry.bind("<KeyRelease>", lambda e: self.apply_search())
 
+        self.dark_mode_btn = tk.Button(self.form_frame, text="🌙 Dark",
+                                       command=self.toggle_dark_mode, width=8)
+        self.dark_mode_btn.pack(side="right", padx=(8, 0))
+
+        self._apply_theme()
+        self._refresh()
+
+    def _apply_theme(self) -> None:
+        if self.dark_mode:
+            self.root.configure(bg="#2b2b2b")
+            self.dark_mode_btn.configure(text="☀️ Light")
+        else:
+            self.root.configure(bg="#f0f0f0")
+            self.dark_mode_btn.configure(text="🌙 Dark")
+
+    def toggle_dark_mode(self) -> None:
+        self.dark_mode = not self.dark_mode
+        self._apply_theme()
         self._refresh()
 
     def set_color(self, color: str) -> None:

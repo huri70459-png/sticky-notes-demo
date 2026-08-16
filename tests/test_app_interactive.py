@@ -180,3 +180,33 @@ def test_pin_button_toggles_pin_state(tmp_path: Path):
     assert store.all()[0].pinned is True
     app.toggle_pin("n1")
     assert store.all()[0].pinned is False
+
+
+# ---- Dark mode tests ----
+
+def test_dark_mode_toggle_exists(tmp_path: Path):
+    """App should start in light mode with a toggle_dark_mode method."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    assert hasattr(app, "toggle_dark_mode")
+    assert app.dark_mode is False
+
+
+def test_toggle_dark_mode_flips_flag(tmp_path: Path):
+    """toggle_dark_mode should flip the dark_mode flag."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    app.toggle_dark_mode()
+    assert app.dark_mode is True
+    app.toggle_dark_mode()
+    assert app.dark_mode is False
+
+
+def test_toggle_dark_mode_changes_root_bg(tmp_path: Path):
+    """Dark mode should change the root window background color."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    light_bg = app.root.cget("bg")
+    app.toggle_dark_mode()
+    dark_bg = app.root.cget("bg")
+    assert light_bg != dark_bg
