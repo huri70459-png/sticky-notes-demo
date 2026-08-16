@@ -54,7 +54,53 @@ class NotesApp:
         self.dark_mode_btn.pack(side="right", padx=(8, 0))
 
         self._apply_theme()
+        self._bind_shortcuts()
         self._refresh()
+
+    def _bind_shortcuts(self) -> None:
+        """Register keyboard shortcuts."""
+        self.root.bind("<Control-n>", self._focus_add_entry)
+        self.root.bind("<Control-s>", self._save_active_note)
+        self.root.bind("<Control-d>", self._delete_active_note)
+        self.root.bind("<Control-f>", self._focus_search)
+
+    def _focus_add_entry(self, event=None) -> None:
+        self.add_entry.delete(0, tk.END)
+        self.add_entry.focus_set()
+
+    def _save_active_note(self, event=None) -> None:
+        """Save the currently focused note's text."""
+        focused = self.root.focus_get()
+        for widget in self.list_frame.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for child in widget.winfo_children():
+                    if child is focused and isinstance(child, tk.Text):
+                        note_id = child.master._note_id
+                        self.edit_note(note_id, child.get("1.0", tk.END))
+                        return
+
+    def _delete_active_note(self, event=None) -> None:
+        """Delete the currently focused note."""
+        focused = self.root.focus_get()
+        for widget in self.list_frame.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for child in widget.winfo_children():
+                    if child is focused and isinstance(child, tk.Text):
+                        note_id = child.master._note_id
+                        self.delete_note(note_id)
+                        return
+
+    def _focus_search(self, event=None) -> None:
+        self.search_var.set("")
+        for widget in self.form_frame.winfo_children():
+            if isinstance(widget, tk.Entry) and widget.cget("textvariable") == "":
+                widget.focus_set()
+                return
+        # Fallback: focus search entry by finding it
+        for widget in self.form_frame.winfo_children():
+            if isinstance(widget, tk.Entry):
+                widget.focus_set()
+                return
 
     def _apply_theme(self) -> None:
         if self.dark_mode:
@@ -156,6 +202,7 @@ class NotesApp:
         notes = self._search_results if self._search_results is not None else self.store.all()
         for note in notes:
             frame = tk.Frame(self.list_frame, relief="raised", bd=1)
+            frame._note_id = note.id
 
             text_widget = tk.Text(frame, width=20, height=4, fg=note.color,
                                   font=("Consolas", 10), wrap="word")

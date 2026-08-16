@@ -423,3 +423,34 @@ def test_tags_parsed_from_text(tmp_path: Path):
     note = store.all_for_id("1")
     assert "grocery" in note.tags
     assert "todo" in note.tags
+
+
+# ---- Keyboard shortcut tests ----
+
+def test_app_registers_ctrl_n(tmp_path: Path, tk_root):
+    """Ctrl+N should be registered."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    bindings = app.root.bind()
+    assert "<Control-Key-n>" in bindings or "<Control-n>" in bindings
+
+def test_app_registers_ctrl_s(tmp_path: Path, tk_root):
+    """Ctrl+S should be registered."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    bindings = app.root.bind()
+    assert "<Control-Key-s>" in bindings or "<Control-s>" in bindings
+
+def test_app_registers_ctrl_d(tmp_path: Path, tk_root):
+    """Ctrl+D should be registered."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    bindings = app.root.bind()
+    assert "<Control-Key-d>" in bindings or "<Control-d>" in bindings
+
+def test_app_registers_ctrl_f(tmp_path: Path, tk_root):
+    """Ctrl+F should be registered."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    bindings = app.root.bind()
+    assert "<Control-Key-f>" in bindings or "<Control-f>" in bindings
