@@ -28,3 +28,18 @@ class NoteStore:
         data = [{"id": n.id, "text": n.text, "color": n.color} for n in notes]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    def update(self, note_id: str, *, text: str | None = None, color: str | None = None) -> None:
+        notes = self.all()
+        for n in notes:
+            if n.id == note_id:
+                if text is not None:
+                    n.text = text
+                if color is not None:
+                    n.color = color
+                break
+        self._write(notes)
+
+    def delete(self, note_id: str) -> None:
+        notes = [n for n in self.all() if n.id != note_id]
+        self._write(notes)
