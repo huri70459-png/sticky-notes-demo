@@ -3,23 +3,19 @@ from pathlib import Path
 from sticky_notes.app import NotesApp
 from sticky_notes.store import NoteStore
 
-# Single root reused across tests — Tk() can only be instantiated once
-_ROOT = tk.Tk()
-_ROOT.withdraw()  # hide the window during tests
 
-
-def test_add_note_button_appears(tmp_path: Path):
+def test_add_note_button_appears(tmp_path: Path, tk_root):
     """An Entry and a Button for adding notes must exist."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     assert app.add_entry is not None
     assert app.add_button is not None
 
 
-def test_add_note_creates_note_and_refreshes(tmp_path: Path):
+def test_add_note_creates_note_and_refreshes(tmp_path: Path, tk_root):
     """Typing text and calling add_note should create a persisted note."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     app.add_entry.delete(0, tk.END)
     app.add_entry.insert(0, "New sticky note")
     app.add_note()
@@ -27,19 +23,19 @@ def test_add_note_creates_note_and_refreshes(tmp_path: Path):
     assert app.store.all()[0].text == "New sticky note"
 
 
-def test_add_note_empty_text_does_nothing(tmp_path: Path):
+def test_add_note_empty_text_does_nothing(tmp_path: Path, tk_root):
     """Empty or whitespace-only input should not create a note."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     app.add_entry.delete(0, tk.END)
-    app.add_note()  # nothing typed
+    app.add_note()
     assert app.note_count() == 0
 
 
-def test_notes_have_delete_buttons(tmp_path: Path):
+def test_notes_have_delete_buttons(tmp_path: Path, tk_root):
     """Each note should render with a Delete button."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="n1", text="test", color="yellow")
     app._refresh()
     buttons = [w for w in app.list_frame.winfo_children()
@@ -48,10 +44,10 @@ def test_notes_have_delete_buttons(tmp_path: Path):
     assert len(buttons) >= 1
 
 
-def test_delete_note_removes_from_store(tmp_path: Path):
+def test_delete_note_removes_from_store(tmp_path: Path, tk_root):
     """Calling delete_note should remove the note from the store."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="n1", text="test", color="yellow")
     store.add(id="n2", text="second", color="pink")
     app.delete_note("n1")
@@ -61,10 +57,10 @@ def test_delete_note_removes_from_store(tmp_path: Path):
     assert remaining[0].id == "n2"
 
 
-def test_edit_note_updates_text(tmp_path: Path):
+def test_edit_note_updates_text(tmp_path: Path, tk_root):
     """Calling edit_note should update the note's text in the store."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="n1", text="old text", color="yellow")
     app._refresh()
     app.edit_note("n1", "new text")
@@ -77,27 +73,27 @@ def test_edit_note_updates_text(tmp_path: Path):
 PRESET_COLORS = ["yellow", "pink", "cyan"]
 
 
-def test_color_picker_buttons_exist(tmp_path: Path):
+def test_color_picker_buttons_exist(tmp_path: Path, tk_root):
     """At least the preset color buttons must be rendered."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     color_btns = [w for w in app.form_frame.winfo_children()
                   if getattr(w, "_color", False)]
     assert len(color_btns) >= 3
 
 
-def test_set_color_changes_current_color(tmp_path: Path):
+def test_set_color_changes_current_color(tmp_path: Path, tk_root):
     """Selecting a color should update the current color."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     app.set_color("pink")
     assert app.current_color == "pink"
 
 
-def test_add_note_uses_selected_color(tmp_path: Path):
+def test_add_note_uses_selected_color(tmp_path: Path, tk_root):
     """A new note should be stored with the currently selected color."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     app.add_entry.delete(0, tk.END)
     app.add_entry.insert(0, "colored note")
     app.set_color("cyan")
@@ -118,10 +114,10 @@ def test_store_search_filters_by_text(tmp_path: Path):
     assert {n.id for n in results} == {"1", "3"}
 
 
-def test_search_filter_updates_ui(tmp_path: Path):
+def test_search_filter_updates_ui(tmp_path: Path, tk_root):
     """Setting search_var and calling apply_search should filter visible notes."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="1", text="buy milk", color="yellow")
     store.add(id="2", text="call mom", color="pink")
     app.search_var.set("milk")
@@ -129,10 +125,10 @@ def test_search_filter_updates_ui(tmp_path: Path):
     assert app.filtered_count() == 1
 
 
-def test_search_empty_shows_all(tmp_path: Path):
+def test_search_empty_shows_all(tmp_path: Path, tk_root):
     """Empty search query should show all notes."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="1", text="a", color="yellow")
     store.add(id="2", text="b", color="pink")
     app.search_var.set("")
@@ -170,10 +166,10 @@ def test_store_all_sorted_pinned_first(tmp_path: Path):
     assert notes[1].id == "1"
 
 
-def test_pin_button_toggles_pin_state(tmp_path: Path):
+def test_pin_button_toggles_pin_state(tmp_path: Path, tk_root):
     """UI pin button should call store.toggle_pin."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     store.add(id="n1", text="test", color="yellow")
     app._refresh()
     app.toggle_pin("n1")
@@ -184,28 +180,28 @@ def test_pin_button_toggles_pin_state(tmp_path: Path):
 
 # ---- Dark mode tests ----
 
-def test_dark_mode_toggle_exists(tmp_path: Path):
+def test_dark_mode_toggle_exists(tmp_path: Path, tk_root):
     """App should start in light mode with a toggle_dark_mode method."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     assert hasattr(app, "toggle_dark_mode")
     assert app.dark_mode is False
 
 
-def test_toggle_dark_mode_flips_flag(tmp_path: Path):
+def test_toggle_dark_mode_flips_flag(tmp_path: Path, tk_root):
     """toggle_dark_mode should flip the dark_mode flag."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     app.toggle_dark_mode()
     assert app.dark_mode is True
     app.toggle_dark_mode()
     assert app.dark_mode is False
 
 
-def test_toggle_dark_mode_changes_root_bg(tmp_path: Path):
+def test_toggle_dark_mode_changes_root_bg(tmp_path: Path, tk_root):
     """Dark mode should change the root window background color."""
     store = NoteStore(tmp_path / "notes.json")
-    app = NotesApp(store=store, root=_ROOT)
+    app = NotesApp(store=store, root=tk_root)
     light_bg = app.root.cget("bg")
     app.toggle_dark_mode()
     dark_bg = app.root.cget("bg")
