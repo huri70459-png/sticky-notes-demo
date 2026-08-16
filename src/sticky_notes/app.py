@@ -79,6 +79,10 @@ class NotesApp:
                                 command=lambda nid=note.id: self.delete_note(nid))
             del_btn.pack(side="right")
 
+            pin_btn = tk.Button(frame, text="📌", width=3,
+                                command=lambda nid=note.id: self.toggle_pin(nid))
+            pin_btn.pack(side="right", padx=(0, 4))
+
             frame.pack(pady=4)
 
     def edit_note(self, note_id: str, new_text: str) -> None:
@@ -87,6 +91,10 @@ class NotesApp:
 
     def delete_note(self, note_id: str) -> None:
         self.store.delete(note_id)
+        self._refresh()
+
+    def toggle_pin(self, note_id: str) -> None:
+        self.store.toggle_pin(note_id)
         self._refresh()
 
     def note_count(self) -> int:

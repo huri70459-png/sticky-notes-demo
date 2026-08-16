@@ -138,3 +138,45 @@ def test_search_empty_shows_all(tmp_path: Path):
     app.search_var.set("")
     app.apply_search()
     assert app.filtered_count() == 2
+
+
+# ---- Pin tests ----
+
+def test_note_has_pinned_field(tmp_path: Path):
+    """New notes should default to pinned=False."""
+    store = NoteStore(tmp_path / "notes.json")
+    note = store.add(id="1", text="hello", color="yellow")
+    assert note.pinned is False
+
+
+def test_toggle_pin_flips_state(tmp_path: Path):
+    """toggle_pin should flip pinned state and persist it."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    store.toggle_pin("1")
+    assert NoteStore(tmp_path / "notes.json").all()[0].pinned is True
+    store.toggle_pin("1")
+    assert NoteStore(tmp_path / "notes.json").all()[0].pinned is False
+
+
+def test_store_all_sorted_pinned_first(tmp_path: Path):
+    """Pinned notes should appear before unpinned ones."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="unpinned", color="yellow")
+    store.add(id="2", text="pinned", color="pink")
+    store.toggle_pin("2")
+    notes = store.all()
+    assert notes[0].id == "2"
+    assert notes[1].id == "1"
+
+
+def test_pin_button_toggles_pin_state(tmp_path: Path):
+    """UI pin button should call store.toggle_pin."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=_ROOT)
+    store.add(id="n1", text="test", color="yellow")
+    app._refresh()
+    app.toggle_pin("n1")
+    assert store.all()[0].pinned is True
+    app.toggle_pin("n1")
+    assert store.all()[0].pinned is False
