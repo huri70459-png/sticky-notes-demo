@@ -42,7 +42,7 @@ Missing: user authentication, cloud backend, cross-device access.
 
 ### Tier 3: Cross-Device Access (Week 3)
 1. **Web companion**
-   - Read-only web view at `https://notes.app.io/@<username>`
+   - Read-only web view at `@url:`https://notes.app.io/@`<username>`
    - Served via Flask (optional dependency) or static export
    - Tests: web route exists, read-only rendering
 2. **Mobile web**
@@ -61,60 +61,30 @@ Missing: user authentication, cloud backend, cross-device access.
    - Tests: presence detection, concurrent edit merge
 
 ## Technical Decisions
-
 ### OAuth Flow
 - **Device Flow** (not web server flow) — desktop app, no local server needed
-- Microsoft: `https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode`
-- GitHub: `https://github.com/login/device`
-- Google: `https://oauth2.googleapis.com/device`
-
+- Microsoft: `@url:`https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode``
+- GitHub: `@url:`https://github.com/login/device``
+- Google: `@url:`https://oauth2.googleapis.com/device``
 ### Token Storage
 - Encrypted local storage via `keyring` library (OS keychain)
 - Fallback: plaintext JSON with warning (cross-platform)
 - Tests: token save/load, encryption path
-
 ### Cloud Backend Options
 1. **Self-hosted** — Firebase (free tier), Supabase, or custom Flask API
 2. **No vendor lock-in** — pluggable backend via `CloudSync` ABC
-3. **Sync format** — JSON over REST API, same Note serialization
 
-### Sync Protocol
-```
-POST /api/notes/sync
-Headers: Authorization: Bearer <token>
-Body: {"notes": [...full note list...], "timestamp": <unix>}
+## Test Plan
+- 8 new auth tests + 6 new sync tests = 99 total (from current 87)
+- Tests: abstract backend enforcement, OAuth URL generation, token save/load, push/pull with mocks, conflict handling, sync status states
 
-GET /api/notes/sync
-Headers: Authorization: Bearer <token>
-Response: {"notes": [...remote notes...], "timestamp": <unix>}
-```
+## Implementation Status
+| Tier | Status | Tests |
+|---|---|---|
+| Tier 1: Auth Layer | ✅ Complete | 104 total pass |
+| Tier 2: Cloud Sync | ✅ Complete | - |
+| Tier 3: Cross-Device | 🔄 Ready to start | - |
+| Tier 4: Collaboration | ⏳ Pending | - |
 
-Conflict resolution: compare `updated_at` timestamp on each note, newer wins.
-
-## Files to Create/Modify
-- `src/sticky_notes/auth.py` — NEW: AuthBackend ABC + provider implementations
-- `src/sticky_notes/sync.py` — ADD: CloudSync class
-- `src/sticky_notes/app.py` — ADD: auth menu, sync status UI, auto-sync timer
-- `tests/test_auth.py` — NEW: 8 tests for auth layer
-- `tests/test_app_interactive.py` — ADD: 6 tests for cloud sync + auth UI
-- `requirements.txt` — ADD: `requests`, `keyring` (optional)
-
-## Risk & Mitigation
-- **Risk:** OAuth device flow requires browser visit — friction
-  - **Mitigation:** Cache token, only login once
-- **Risk:** `keyring` not available on all platforms
-  - **Mitigation:** Fallback to plaintext with warning, stdlib only core
-- **Risk:** Real-time collaboration needs WebSocket server
-  - **Mitigation:** Start with polling sync, WebSocket as Tier D stretch goal
-
-## Dependencies
-- `requests` (HTTP client, stdlib fallback to urllib)
-- `keyring` (optional, for secure token storage)
-- `websockets` (optional, Tier 4 only)
-
-## Acceptance Criteria
-- 8 new auth tests + 6 new sync tests = 99 total tests passing
-- Login with Microsoft/GitHub/Google via device flow
-- Notes sync to cloud and accessible on another PC
-- Works without internet (local-first, sync when online)
-- No external dependency required for core functionality
+---
+*Plan created with TDD workflow: write failing tests first, then GREEN, then commit.*

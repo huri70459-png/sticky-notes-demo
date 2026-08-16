@@ -12,7 +12,7 @@ _TAG_RE = re.compile(r'#(\w+)')
 
 class NoteStore:
     def __init__(self, path: Path):
-        self.path = path
+        self.path = Path(path) if isinstance(path, str) else path
 
     def all(self) -> list[Note]:
         if not self.path.exists():
