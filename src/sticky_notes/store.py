@@ -1,7 +1,12 @@
 import json
+import re
 import uuid
 from pathlib import Path
 from .note import Note
+
+# Pattern to match [[id]] wiki-style links
+_LINK_RE = re.compile(r'\[\[([^\]]+)\]\]')
+
 
 class NoteStore:
     def __init__(self, path: Path):
@@ -15,6 +20,13 @@ class NoteStore:
         # Pinned notes always come first
         return sorted(notes, key=lambda n: (not n.pinned, n.id))
 
+    def all_for_id(self, note_id: str) -> Note | None:
+        """Return a single note by ID, or None if not found."""
+        for n in self.all():
+            if n.id == note_id:
+                return n
+        return None
+
     def search(self, query: str) -> list[Note]:
         """Return notes whose text contains the query (case-insensitive)."""
         if not query:
@@ -24,7 +36,8 @@ class NoteStore:
 
     def add(self, *, id: str | None = None, text: str, color: str = "yellow",
             pinned: bool = False, width: int = 200, height: int = 100,
-            content: str = "", always_on_top: bool = False) -> Note:
+            content: str = "", always_on_top: bool = False,
+            links: list | None = None) -> Note:
         notes = self.all()
         new_note = Note(
             id=id or str(uuid.uuid4()),
@@ -36,14 +49,31 @@ class NoteStore:
             content=content,
             always_on_top=always_on_top,
         )
+        # Auto-parse [[id]] links from text
+        if links is not None:
+            new_note.links = list(links)
+        else:
+            new_note.links = self._extract_links(text)
         notes.append(new_note)
         self._write(notes)
         return new_note
 
+    def _extract_links(self, text: str) -> list[str]:
+        """Extract [[id]] wiki-links from text."""
+        matches = _LINK_RE.findall(text)
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        result: list[str] = []
+        for m in matches:
+            if m not in seen:
+                seen.add(m)
+                result.append(m)
+        return result
+
     def _write(self, notes: list[Note]) -> None:
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
                  "width": n.width, "height": n.height, "content": n.content,
-                 "always_on_top": n.always_on_top}
+                 "always_on_top": n.always_on_top, "links": n.links}
                 for n in notes]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -52,7 +82,8 @@ class NoteStore:
                color: str | None = None, pinned: bool | None = None,
                width: int | None = None, height: int | None = None,
                content: str | None = None,
-               always_on_top: bool | None = None) -> None:
+               always_on_top: bool | None = None,
+               links: list | None = None) -> None:
         notes = self.all()
         for n in notes:
             if n.id == note_id:
@@ -70,6 +101,8 @@ class NoteStore:
                     n.content = content
                 if always_on_top is not None:
                     n.always_on_top = always_on_top
+                if links is not None:
+                    n.links = list(links)
                 break
         self._write(notes)
 
@@ -96,6 +129,15 @@ class NoteStore:
         self._write(notes)
 
     def backlinks(self, note_id: str) -> list[Note]:
-        """Return notes that link to the given note_id (placeholder for [[...]] syntax)."""
-        # TODO: implement when note linking is added
-        return []
+        """Return notes that link to the given note_id (backlinks)."""
+        return [n for n in self.all() if note_id in n.links]
+
+    def add_link(self, from_id: str, to_id: str) -> None:
+        """Add a link from one note to another."""
+        notes = self.all()  # fresh read from disk
+        for n in notes:
+            if n.id == from_id:
+                if to_id not in n.links:
+                    n.links.append(to_id)
+                break
+        self._write(notes)

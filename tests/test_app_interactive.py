@@ -322,3 +322,49 @@ def test_set_transparency_clamps_value(tmp_path: Path, tk_root):
     assert app.root.attributes("-alpha") == 1.0
     app.set_transparency(0.0)
     assert app.root.attributes("-alpha") == 0.1
+
+
+# ---- Note linking tests ----
+
+def test_note_has_links_field():
+    """New Note should have an empty links list."""
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert hasattr(note, "links")
+    assert note.links == []
+
+
+def test_store_saves_links(tmp_path: Path):
+    """Links should persist to JSON."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="A", text="note A", color="yellow", links=["B", "C"])
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].links == ["B", "C"]
+
+
+def test_store_backlinks(tmp_path: Path):
+    """backlinks should return notes that link to the given note."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="A", text="A", color="yellow", links=["B"])
+    store.add(id="B", text="B", color="yellow", links=["C"])
+    store.add(id="C", text="C", color="yellow")
+    result = store.backlinks("B")
+    assert len(result) == 1
+    assert result[0].id == "A"
+
+
+def test_store_add_link(tmp_path: Path):
+    """Adding a link should persist."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="A", text="A", color="yellow")
+    store.add(id="B", text="B", color="yellow")
+    store.add_link("A", "B")
+    assert "B" in store.all_for_id("A").links
+
+
+def test_note_text_links_parsed(tmp_path: Path):
+    """Notes with [[id]] syntax should auto-generate links on save."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="A", text="See [[B]] for details", color="yellow")
+    note = store.all_for_id("A")
+    assert "B" in note.links

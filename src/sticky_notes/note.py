@@ -10,3 +10,8 @@ class Note:
     height: int = 100
     content: str = ""
     always_on_top: bool = False
+    links: list = None
+
+    def __post_init__(self):
+        if self.links is None:
+            self.links = []
