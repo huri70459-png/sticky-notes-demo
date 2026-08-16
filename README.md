@@ -1,17 +1,27 @@
 # Sticky Notes (Hermes demo)
 
-A Windows desktop sticky-notes app built end-to-end through the **Hermes Agent flow**:
-*idea → spec → TDD → build → review → commit*.
+A Microsoft Sticky Notes competitor built end-to-end through the **Hermes Agent flow**:
+idea → spec → TDD → build → review → commit.
 
 ## Features
 
-- **Add** notes with an Entry + Add button
-- **Edit** note text inline via Entry + Save per note
+- **Add** notes with typeahead + Enter or button
+- **Edit** note text inline via multi-line Text widget
 - **Delete** notes with a × button
-- **Color picker** — choose yellow, pink, or cyan for new notes
-- **Search** — live filter as you type
+- **Color picker** — yellow, blue, green, pink, lavender, cyan
+- **Per-note resizing** — notes auto-size to content
+- **Rich text** — `**bold**` and `*italic*` markdown in notes
+- **Search** — live filter as you type (Ctrl+F)
 - **Pin** — pin important notes to the top (📌)
-- **Dark mode** — toggle with 🌙/☀️ button
+- **Always-on-top** — keep window on top (📌 Pin Window)
+- **Transparency** — slider from 10% to 100% (💧)
+- **Dark mode** — toggle with 🌙/☀️
+- **Note linking** — `[[note-id]]` wiki-links with backlinks
+- **Tags** — `#tag` parsing, filter by tag
+- **Keyboard shortcuts** — Ctrl+N (new), Ctrl+S (save), Ctrl+D (delete), Ctrl+F (search)
+- **Markdown export** — File → Export Markdown
+- **Optional sync** — GitSync backend (push/pull to git repo)
+- **MS Sticky Notes aesthetic** — Segoe UI font, colored note cards, toolbar design
 
 ## Run
 
@@ -26,18 +36,21 @@ Notes persist at `%LOCALAPPDATA%\StickyNotes\notes.json`.
 
 ```bash
 .venv/Scripts/python -m pytest tests/ -v
-# 26 passed
+# 58 passed
 ```
 
 ## Stack
 
 - Python 3.11 + Tkinter (stdlib — no install)
 - JSON file storage
-- pytest (26 tests)
+- pytest (58 tests across 4 modules)
+- Optional: git for sync
 
 ## Architecture
 
-- `src/sticky_notes/note.py` — `Note` dataclass (id, text, color, pinned)
-- `src/sticky_notes/store.py` — `NoteStore` (CRUD + search + pin over JSON)
-- `src/sticky_notes/app.py` — `NotesApp` (Tkinter UI, thin event handlers)
-- `tests/` — 26 tests across 4 modules
+- `src/sticky_notes/note.py` — `Note` dataclass (14 fields: id, text, color, pinned, width, height, content, always_on_top, links, tags)
+- `src/sticky_notes/store.py` — `NoteStore` (CRUD + search + pin + tags + links + markdown export)
+- `src/sticky_notes/app.py` — `NotesApp` (Tkinter UI, keyboard shortcuts, dark mode, transparency)
+- `src/sticky_notes/sync.py` — `SyncBackend` ABC + `GitSync` implementation
+- `tests/` — 58 tests across 4 modules
+- `redesign/sticky-notes-redesign.html` — HTML prototype of the UI
