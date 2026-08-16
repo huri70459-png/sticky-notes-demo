@@ -11,6 +11,7 @@ class NotesApp:
         self._search_results: list | None = None
         self.dark_mode = False
         self.always_on_top = False
+        self.alpha_var = tk.DoubleVar(value=1.0)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -42,6 +43,12 @@ class NotesApp:
                                      command=self.toggle_topmost, width=10)
         self.topmost_btn.pack(side="right", padx=(0, 8))
 
+        alpha_slider = tk.Scale(self.form_frame, from_=0.1, to=1.0, resolution=0.1,
+                                orient="horizontal", label="💧",
+                                variable=self.alpha_var, width=8,
+                                command=lambda v: self.set_transparency(float(v)))
+        alpha_slider.pack(side="right", padx=(0, 8))
+
         self.dark_mode_btn = tk.Button(self.form_frame, text="🌙 Dark",
                                        command=self.toggle_dark_mode, width=8)
         self.dark_mode_btn.pack(side="right", padx=(8, 0))
@@ -67,6 +74,12 @@ class NotesApp:
         self.always_on_top = not self.always_on_top
         self.root.attributes("-topmost", self.always_on_top)
         self.topmost_btn.configure(text="📌 Pinned" if self.always_on_top else "📌 Pin Window")
+
+    def set_transparency(self, alpha: float) -> None:
+        """Set window transparency, clamped to [0.1, 1.0]."""
+        self.current_alpha = max(0.1, min(1.0, alpha))
+        self.alpha_var.set(self.current_alpha)
+        self.root.attributes("-alpha", self.current_alpha)
 
     def set_color(self, color: str) -> None:
         self.current_color = color

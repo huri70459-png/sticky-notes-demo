@@ -293,3 +293,32 @@ def test_rich_text_applies_bold_tag(tmp_path: Path, tk_root):
     # The bold tag should be applied to "bold"
     tags = text_widget.tag_names("1.0")
     assert "bold" in tags
+
+
+# ---- Transparency tests ----
+
+def test_app_has_transparency_slider(tmp_path: Path, tk_root):
+    """App should have a transparency slider widget."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "alpha_var")
+    sliders = [w for w in app.form_frame.winfo_children() if isinstance(w, tk.Scale)]
+    assert len(sliders) >= 1
+
+
+def test_set_transparency_changes_alpha(tmp_path: Path, tk_root):
+    """Setting alpha should update the window's -alpha attribute."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    app.set_transparency(0.5)
+    assert app.root.attributes("-alpha") == 0.5
+
+
+def test_set_transparency_clamps_value(tmp_path: Path, tk_root):
+    """Alpha values outside [0.1, 1.0] should be clamped."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    app.set_transparency(2.0)
+    assert app.root.attributes("-alpha") == 1.0
+    app.set_transparency(0.0)
+    assert app.root.attributes("-alpha") == 0.1
