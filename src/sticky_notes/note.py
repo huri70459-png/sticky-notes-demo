@@ -9,3 +9,4 @@ class Note:
     width: int = 200
     height: int = 100
     content: str = ""
+    always_on_top: bool = False

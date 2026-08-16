@@ -216,6 +216,7 @@ def test_note_has_size_fields():
     note = Note(id="1", text="hello", color="yellow")
     assert hasattr(note, "width")
     assert hasattr(note, "height")
+    assert hasattr(note, "always_on_top")
 
 
 def test_note_default_size():
@@ -223,6 +224,7 @@ def test_note_default_size():
     note = Note(id="1", text="hello", color="yellow")
     assert note.width > 0
     assert note.height > 0
+    assert note.always_on_top is False
 
 
 def test_store_saves_note_size(tmp_path: Path):
@@ -232,6 +234,33 @@ def test_store_saves_note_size(tmp_path: Path):
     reloaded = NoteStore(tmp_path / "notes.json")
     assert reloaded.all()[0].width == 300
     assert reloaded.all()[0].height == 150
+
+
+# ---- Always-on-top tests ----
+
+def test_note_has_always_on_top(tmp_path: Path):
+    """New notes should default to always_on_top=False."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    assert store.all()[0].always_on_top is False
+
+
+def test_store_saves_always_on_top(tmp_path: Path):
+    """always_on_top should persist to JSON."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow", always_on_top=True)
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all()[0].always_on_top is True
+
+
+def test_toggle_always_on_top(tmp_path: Path):
+    """toggle_always_on_top should flip the flag and persist."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    store.toggle_always_on_top("1")
+    assert NoteStore(tmp_path / "notes.json").all()[0].always_on_top is True
+    store.toggle_always_on_top("1")
+    assert NoteStore(tmp_path / "notes.json").all()[0].always_on_top is False
 
 
 # ---- Rich text tests ----

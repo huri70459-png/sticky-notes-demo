@@ -10,6 +10,7 @@ class NotesApp:
         self.search_var = tk.StringVar()
         self._search_results: list | None = None
         self.dark_mode = False
+        self.always_on_top = False
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -37,6 +38,10 @@ class NotesApp:
         search_entry.pack(side="left", padx=(0, 8))
         search_entry.bind("<KeyRelease>", lambda e: self.apply_search())
 
+        self.topmost_btn = tk.Button(self.form_frame, text="📌 Pin Window",
+                                     command=self.toggle_topmost, width=10)
+        self.topmost_btn.pack(side="right", padx=(0, 8))
+
         self.dark_mode_btn = tk.Button(self.form_frame, text="🌙 Dark",
                                        command=self.toggle_dark_mode, width=8)
         self.dark_mode_btn.pack(side="right", padx=(8, 0))
@@ -56,6 +61,12 @@ class NotesApp:
         self.dark_mode = not self.dark_mode
         self._apply_theme()
         self._refresh()
+
+    def toggle_topmost(self) -> None:
+        """Toggle always-on-top for the entire window."""
+        self.always_on_top = not self.always_on_top
+        self.root.attributes("-topmost", self.always_on_top)
+        self.topmost_btn.configure(text="📌 Pinned" if self.always_on_top else "📌 Pin Window")
 
     def set_color(self, color: str) -> None:
         self.current_color = color
