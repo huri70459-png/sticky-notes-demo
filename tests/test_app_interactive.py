@@ -499,6 +499,91 @@ def test_git_sync_push_creates_repo(tmp_path: Path):
     assert len(files) >= 1
 
 
+def test_git_sync_pull_returns_notes(tmp_path: Path):
+    """GitSync.pull should retrieve notes from the repo."""
+    from sticky_notes.sync import GitSync
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="hello", color="yellow")
+    git_dir = tmp_path / "sync_repo"
+    sync = GitSync(git_dir, store)
+    sync.push()
+    # Pull into a fresh store
+    store2 = NoteStore(tmp_path / "notes2.json")
+    sync2 = GitSync(git_dir, store2)
+    notes = sync2.pull()
+    assert len(notes) >= 1
+    assert notes[0].text == "hello"
+
+
+# ---- REST API sync tests ----
+
+def test_api_sync_is_sync_backend(tmp_path: Path):
+    """SimpleAPISync should be a SyncBackend."""
+    from sticky_notes.sync import SimpleAPISync, SyncBackend
+    assert issubclass(SimpleAPISync, SyncBackend)
+
+
+def test_api_sync_push_to_endpoint(tmp_path: Path):
+    """API sync should serialize notes and POST them."""
+    from sticky_notes.sync import SimpleAPISync
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="api note", color="yellow")
+    sync = SimpleAPISync(store, "https://api.example.com/notes")
+    # Mock the HTTP call
+    import sticky_notes.sync as sync_mod
+    called = []
+    original = sync_mod.requests if hasattr(sync_mod, "requests") else None
+
+    class MockResponse:
+        status_code = 200
+        def json(self):
+            return {"success": True}
+
+    class MockRequests:
+        @staticmethod
+        def post(url, json=None, headers=None, timeout=None):
+            called.append((url, json))
+            return MockResponse()
+        @staticmethod
+        def get(url, headers=None, timeout=None):
+            return MockResponse()
+
+    sync_mod._requests = MockRequests()
+    sync.push()
+    assert len(called) >= 1
+    assert called[0][0] == "https://api.example.com/notes"
+    assert isinstance(called[0][1], list)
+
+
+def test_api_sync_pull_returns_notes(tmp_path: Path):
+    """API sync pull should GET and deserialize notes."""
+    from sticky_notes.sync import SimpleAPISync
+    store = NoteStore(tmp_path / "notes.json")
+    sync = SimpleAPISync(store, "https://api.example.com/notes")
+    import sticky_notes.sync as sync_mod
+
+    class MockResponse:
+        status_code = 200
+        def json(self):
+            return [{"id": "1", "text": "remote note", "color": "yellow",
+                     "pinned": False, "width": 200, "height": 100,
+                     "content": "", "always_on_top": False, "links": [],
+                     "tags": [], "order": 0}]
+
+    class MockRequests:
+        @staticmethod
+        def get(url, headers=None, timeout=None):
+            return MockResponse()
+        @staticmethod
+        def post(url, json=None, headers=None, timeout=None):
+            return MockResponse()
+
+    sync_mod._requests = MockRequests()
+    notes = sync.pull()
+    assert len(notes) == 1
+    assert notes[0].text == "remote note"
+
+
 def test_git_sync_pull_gets_updates(tmp_path: Path):
     """GitSync should pull notes from the sync repo into the store."""
     from sticky_notes.sync import GitSync
@@ -526,3 +611,149 @@ def test_sync_backend_is_abstract():
         assert False, "Should not be able to instantiate abstract class"
     except TypeError:
         pass
+
+
+# ---- Drag-to-reorder tests ----
+
+def test_note_has_order_field():
+    """Notes should have an order field for drag-to-reorder."""
+    from sticky_notes.note import Note
+    note = Note(id="1", text="hello", color="yellow")
+    assert hasattr(note, "order")
+    assert note.order == 0
+
+
+def test_store_saves_order(tmp_path: Path):
+    """Note order should persist to JSON."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="first", color="yellow", order=0)
+    store.add(id="2", text="second", color="pink", order=1)
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all_for_id("1").order == 0
+    assert reloaded.all_for_id("2").order == 1
+
+
+def test_store_move_note_reorders(tmp_path: Path):
+    """move_note should change a note's order and persist it."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="a", color="yellow", order=0)
+    store.add(id="2", text="b", color="yellow", order=1)
+    store.add(id="3", text="c", color="yellow", order=2)
+    store.move_note("3", new_position=0)
+    reloaded = NoteStore(tmp_path / "notes.json")
+    assert reloaded.all_for_id("3").order == 0
+    assert reloaded.all_for_id("1").order == 1
+    assert reloaded.all_for_id("2").order == 2
+
+
+def test_store_saves_reorder(tmp_path: Path):
+    """move_note should persist reordered notes."""
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="A", text="a", color="yellow")
+    store.add(id="B", text="b", color="yellow")
+    store.add(id="C", text="c", color="yellow")
+    store.move_note("C", new_position=0)
+    reloaded = NoteStore(tmp_path / "notes.json")
+    orders = {n.id: n.order for n in reloaded.all()}
+    assert orders["C"] == 0
+    assert orders["A"] == 1
+    assert orders["B"] == 2
+
+
+# ---- Font size tests ----
+
+def test_app_has_font_size_setting(tmp_path: Path, tk_root):
+    """App should support font size selection."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "set_font_size")
+    app.set_font_size("16px")
+    assert app._font_size == "16px"
+
+
+def test_app_has_move_note_method(tmp_path: Path, tk_root):
+    """App should have move_note for drag-to-reorder."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="1", text="a", color="yellow")
+    store.add(id="2", text="b", color="yellow")
+    app.move_note("2", new_position=0)
+    assert app.store.all()[0].id == "2"
+
+
+# ---- Context menu tests ----
+
+def test_app_has_context_menu(tmp_path: Path, tk_root):
+    """App should have a context menu for right-click actions."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "show_context_menu")
+    assert hasattr(app, "_context_menu")
+
+
+# ---- Tag badge tests ----
+
+def test_note_tags_rendered_as_badges(tmp_path: Path, tk_root):
+    """Notes with tags should render tag badge labels."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="n1", text="test #work", color="yellow", tags=["work"])
+    app._refresh()
+    # Check for tag badge in the note frame (recursive search)
+    note_frame = app.list_frame.winfo_children()[0]
+    badges = []
+    def find_labels(widget):
+        for w in widget.winfo_children():
+            if isinstance(w, tk.Label) and getattr(w, "_tag", ""):
+                badges.append(w)
+            if isinstance(w, tk.Frame):
+                find_labels(w)
+    find_labels(note_frame)
+    assert len(badges) >= 1
+
+
+# ---- Daily note tests ----
+
+def test_store_can_create_daily_note(tmp_path: Path):
+    """Store should support creating a daily note."""
+    from datetime import date
+    store = NoteStore(tmp_path / "notes.json")
+    today = date.today().isoformat()
+    store.add(id=f"daily-{today}", text=f"Daily Note: {today}",
+              color="yellow", tags=["daily"], pinned=True)
+    note = store.all_for_id(f"daily-{today}")
+    assert note is not None
+    assert "daily" in note.tags
+
+
+def test_app_create_daily_note(tmp_path: Path, tk_root):
+    """App should create a daily note for today."""
+    from datetime import date
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    app.create_daily_note()
+    today = date.today().isoformat()
+    note = store.all_for_id(f"daily-{today}")
+    assert note is not None
+    assert "daily" in note.tags
+    assert note.pinned is True
+
+
+def test_backlinks_displayed_in_ui(tmp_path: Path, tk_root):
+    """Notes with backlinks should display 'Linked from' label."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="A", text="links to B", color="yellow", content="See [[B]]", links=["B"])
+    store.add(id="B", text="target note", color="yellow")
+    app._refresh()
+    # Note B should have a backlink label
+    notes = app.store.all()
+    b_frame = None
+    for frame in app.list_frame.winfo_children():
+        if frame._note_id == "B":
+            b_frame = frame
+            break
+    # Find the backlink label
+    labels = [w for w in b_frame.winfo_children() if isinstance(w, tk.Label)
+              and "Linked from" in (w.cget("text") if hasattr(w, "cget") else "")]
+    assert len(labels) >= 1

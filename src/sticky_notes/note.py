@@ -12,6 +12,7 @@ class Note:
     always_on_top: bool = False
     links: list = None
     tags: list = None
+    order: int = 0
 
     def __post_init__(self):
         if self.links is None:

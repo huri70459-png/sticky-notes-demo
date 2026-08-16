@@ -727,10 +727,13 @@
           textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
         });
 
-        // Drag to reorder — Tier A
-        el.draggable = true;
-        el.addEventListener("dragstart", () => el.classList.add("dragging"));
-        el.addEventListener("dragend", () => el.classList.remove("dragging"));
+        # Drag to reorder — from blueprint
+        el.draggable = True
+        el.addEventListener("drag", () => el.classList.add("drag-over"))
+        el.addEventListener("dragend", () => {
+          el.classList.remove("drag-over");
+          // Would call app.move_note(note.id, newIndex)
+        });
         el.addEventListener("dragover", (e) => {
           e.preventDefault();
           el.classList.add("drag-over");
@@ -759,8 +762,6 @@
         });
 
         notesGrid.appendChild(el);
-
-        // Auto-height
         textarea.style.height = 'auto';
         textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
       }

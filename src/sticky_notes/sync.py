@@ -61,7 +61,8 @@ class GitSync(SyncBackend):
         # Write notes as JSON
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
                  "width": n.width, "height": n.height, "content": n.content,
-                 "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags}
+                 "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags,
+                 "order": n.order}
                 for n in notes]
         notes_path = self.repo_path / self.notes_file
         notes_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -93,3 +94,53 @@ class GitSync(SyncBackend):
         """Check if the local store has changes not yet pushed."""
         result = self._run_git(["status", "--porcelain"])
         return bool(result)
+
+
+class SimpleAPISync(SyncBackend):
+    """Sync via a REST API endpoint (Tier D)."""
+
+    def __init__(self, store: NoteStore, endpoint: str, api_key: str | None = None):
+        self.store = store
+        self.endpoint = endpoint
+        self.api_key = api_key
+        self._timeout = 30
+
+    @property
+    def _headers(self) -> dict:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
+    def _serialize(self, notes: list[Note]) -> list[dict]:
+        return [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
+                 "width": n.width, "height": n.height, "content": n.content,
+                 "always_on_top": n.always_on_top, "links": n.links,
+                 "tags": n.tags, "order": n.order}
+                for n in notes]
+
+    def push(self, notes: list[Note] | None = None) -> None:
+        """Push local notes to the REST API."""
+        import requests as _base_requests
+        # Allow test mock injection via module-level _requests
+        import sticky_notes.sync as _self
+        req = getattr(_self, "_requests", _base_requests)
+        if notes is None:
+            notes = self.store.all()
+        data = self._serialize(notes)
+        req.post(self.endpoint, json=data, headers=self._headers,
+                 timeout=self._timeout)
+
+    def pull(self) -> list[Note]:
+        """Pull notes from the REST API and update local store."""
+        import requests as _base_requests
+        import sticky_notes.sync as _self
+        req = getattr(_self, "_requests", _base_requests)
+        resp = req.get(self.endpoint, headers=self._headers,
+                       timeout=self._timeout)
+        data = resp.json()
+        if not isinstance(data, list):
+            data = []
+        notes = [Note(**n) for n in data]
+        self.store._write(notes)
+        return notes

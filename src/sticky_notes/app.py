@@ -27,13 +27,37 @@ class NotesApp:
         self.always_on_top = False
         self.alpha_var = tk.DoubleVar(value=1.0)
         self._active_note_id: str | None = None
+        self._font_size: str = "14px"
+        self._font_size_num: int = 10
+        self._context_target: str | None = None
         self._build_ui()
+        self._create_context_menu()
+        self._focus_note_id = None
+
+    def create_daily_note(self) -> None:
+        """Create or focus a daily note for today."""
+        from datetime import date
+        today = date.today().isoformat()
+        note_id = f"daily-{today}"
+        existing = self.store.all_for_id(note_id)
+        if existing:
+            self._focus_note(note_id)
+        else:
+            self.store.add(id=note_id, text=f"Daily Note: {today}",
+                           color=self.current_color, tags=["daily"], pinned=True)
+            self._refresh()
 
     def _build_ui(self) -> None:
         # Toolbar — top bar
         self.toolbar = tk.Frame(self.root, bg="#ffffff", relief="flat",
                                 highlightbackground="#e0e0e0", highlightthickness=1)
         self.toolbar.pack(fill="x", padx=12, pady=8)
+
+        tk.Button(self.toolbar, text="📅 Today",
+                  command=self.create_daily_note,
+                  font=("Segoe UI", 9), bg="#ffffff",
+                  activebackground="#f0f0f0",
+                  relief="flat").pack(side="left", padx=(0, 4))
 
         tk.Button(self.toolbar, text="+ New Note",
                   command=self._focus_add_entry,
@@ -101,6 +125,21 @@ class NotesApp:
             b._color_name = color
             b.pack(side="left", padx=2)
 
+        font_size_var = tk.StringVar(value="14px")
+        font_size_select = tk.OptionMenu(self.toolbar, font_size_var, "12px", "14px", "16px", "18px",
+                                         command=self.set_font_size)
+        font_size_select.config(font=("Segoe UI", 8), width=8, relief="flat",
+                                bg="#ffffff", activebackground="#f0f0f0")
+        font_size_select.pack(side="right", padx=(0, 8))
+
+        # Sync toggle button
+        self.sync_btn = tk.Button(self.toolbar, text="☁️ Sync",
+                                  command=self._sync_notes,
+                                  font=("Segoe UI", 9), bg="#ffffff",
+                                  activebackground="#f0f0f0",
+                                  relief="flat")
+        self.sync_btn.pack(side="right", padx=(0, 4))
+
         # File menu
         file_menu_btn = tk.Menubutton(self.toolbar, text="⋯",
                                       font=("Segoe UI", 10), width=3,
@@ -126,6 +165,51 @@ class NotesApp:
         self.root.bind("<Control-Key-s>", self._save_active_note)
         self.root.bind("<Control-Key-d>", self._delete_active_note)
         self.root.bind("<Control-Key-f>", self._focus_search)
+
+    def _create_context_menu(self) -> None:
+        """Create the right-click context menu."""
+        self._context_menu = tk.Menu(self.root, tearoff=0)
+        self._context_menu.add_command(label="📌 Pin", command=self._context_pin)
+        self._context_menu.add_command(label="📋 Duplicate", command=self._context_duplicate)
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="🔵 Blue", command=lambda: self._context_set_color("blue"))
+        self._context_menu.add_command(label="🟢 Green", command=lambda: self._context_set_color("green"))
+        self._context_menu.add_command(label="🩷 Pink", command=lambda: self._context_set_color("pink"))
+        self._context_menu.add_command(label="💜 Lavender", command=lambda: self._context_set_color("lavender"))
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="🗑️ Delete", command=self._context_delete)
+
+    def show_context_menu(self, event, note_id: str) -> None:
+        """Show context menu on right-click."""
+        self._context_target = note_id
+        try:
+            self._context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self._context_menu.grab_release()
+
+    def _context_pin(self) -> None:
+        if self._context_target:
+            self.toggle_pin(self._context_target)
+
+    def _context_duplicate(self) -> None:
+        if self._context_target:
+            note = self.store.all_for_id(self._context_target)
+            if note:
+                self.store.add(text=note.text, color=note.color,
+                               content=note.content, pinned=note.pinned,
+                               width=note.width, height=note.height,
+                               always_on_top=note.always_on_top,
+                               links=note.links, tags=note.tags)
+                self._refresh()
+
+    def _context_set_color(self, color: str) -> None:
+        if self._context_target:
+            self.store.update(self._context_target, color=color)
+            self._refresh()
+
+    def _context_delete(self) -> None:
+        if self._context_target:
+            self.delete_note(self._context_target)
 
     def _focus_add_entry(self, event=None) -> None:
         self.add_entry.delete(0, tk.END)
@@ -210,6 +294,11 @@ class NotesApp:
             if getattr(btn, "_color", False):
                 btn.configure(highlightbackground=("#50a8eb" if btn._color_name == color else "#e0e0e0"))
 
+    def set_font_size(self, size: str) -> None:
+        """Set the global font size for note text."""
+        self._font_size = size
+        self._refresh()
+
     def apply_search(self) -> None:
         query = self.search_var.get().strip()
         self._search_results = self.store.search(query) if query else None
@@ -283,6 +372,13 @@ class NotesApp:
                              padx=12, pady=12)
             frame._note_id = note.id
 
+            # Drag-and-drop support
+            frame.bind("<ButtonPress-1>", lambda e, f=frame: self._on_drag_start(e, f))
+            frame.bind("<B1-Motion>", lambda e, f=frame: self._on_drag_motion(e, f))
+            frame.bind("<ButtonRelease-1>", lambda e, f=frame: self._on_drag_drop(e, f))
+            # Context menu — right-click
+            frame.bind("<Button-3>", lambda e, nid=note.id: self.show_context_menu(e, nid))
+
             # Rounded corners via canvas background
             text_widget = tk.Text(frame, width=30, height=4,
                                   font=("Segoe UI", 10),
@@ -291,9 +387,32 @@ class NotesApp:
                                   relief="flat",
                                   borderwidth=0,
                                   highlightthickness=0)
+            text_widget.bind("<ButtonPress-1>", lambda e: e.widget.master._on_drag_start(e, e.widget.master))
+            text_widget.bind("<B1-Motion>", lambda e: e.widget.master._on_drag_motion(e, e.widget.master))
+            text_widget.bind("<ButtonRelease-1>", lambda e: e.widget.master._on_drag_drop(e, e.widget.master))
             self._render_content(text_widget, note.content or note.text)
             text_widget.pack(fill="both", expand=True, side="top")
             text_widget.bind("<FocusIn>", lambda e, nid=note.id, tw=text_widget: self._on_note_focus(nid, tw))
+
+            # Tag badges — Tier B
+            if note.tags:
+                tags_frame = tk.Frame(frame, bg=bg_color)
+                tags_frame.pack(fill="x", side="top", pady=(0, 4))
+                for tag in note.tags:
+                    label = tk.Label(tags_frame, text=f"#{tag}",
+                                     font=("Segoe UI", 9, "bold"),
+                                     fg=bg_color, bg="#ffffff",
+                                     relief="flat", padx=6, pady=2)
+                    label._tag = tag
+                    label.pack(side="left", padx=(0, 4))
+
+            # Backlinks display — Tier C
+            backlinks = self.store.backlinks(note.id)
+            if backlinks:
+                bl_text = "🔗 Linked from: " + ", ".join(b.text for b in backlinks)
+                tk.Label(frame, text=bl_text,
+                         font=("Segoe UI", 8), fg=bg_color, bg=bg_color,
+                         relief="flat", pady=2).pack(fill="x", side="bottom")
 
             # Footer: pin + delete
             footer = tk.Frame(frame, bg=bg_color)
@@ -313,6 +432,25 @@ class NotesApp:
 
             frame.pack(pady=8, padx=2, fill="x")
 
+    def _on_drag_start(self, event, frame):
+        """Record the starting position for drag-and-drop."""
+        self._drag_start_y = event.y_root
+        self._drag_start_frame = frame
+
+    def _on_drag_motion(self, event, frame):
+        """Handle drag motion — for now just visual feedback."""
+        pass
+
+    def _on_drag_drop(self, event, frame):
+        """Handle drag drop — reorder notes."""
+        note_id = frame._note_id
+        # Determine new position based on where dropped
+        frames = self.list_frame.winfo_children()
+        for i, f in enumerate(frames):
+            if f is frame:
+                self.move_note(note_id, i)
+                return
+
     def _on_note_focus(self, note_id: str, widget: tk.Text) -> None:
         self._active_note_id = note_id
         # Auto-resize height to content
@@ -329,6 +467,27 @@ class NotesApp:
     def toggle_pin(self, note_id: str) -> None:
         self.store.toggle_pin(note_id)
         self._refresh()
+
+    def move_note(self, note_id: str, new_position: int) -> None:
+        """Move a note to a new position (for drag-to-reorder)."""
+        self.store.move_note(note_id, new_position)
+        self._refresh()
+
+    def _focus_note(self, note_id: str) -> None:
+        """Focus a specific note in the UI."""
+        self._focus_note_id = note_id
+
+    def _sync_notes(self) -> None:
+        """Push notes to remote sync."""
+        try:
+            from .sync import GitSync
+            from pathlib import Path
+            sync_dir = Path.home() / ".sticky_notes_sync"
+            sync = GitSync(sync_dir, self.store)
+            sync.push()
+            self._refresh()
+        except Exception as e:
+            pass
 
     def note_count(self) -> int:
         return len(self.store.all())

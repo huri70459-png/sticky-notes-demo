@@ -19,8 +19,8 @@ class NoteStore:
             return []
         data = json.loads(self.path.read_text(encoding="utf-8"))
         notes = [Note(**n) for n in data]
-        # Pinned notes always come first
-        return sorted(notes, key=lambda n: (not n.pinned, n.id))
+        # Pinned notes always come first, then by order
+        return sorted(notes, key=lambda n: (not n.pinned, n.order))
 
     def all_for_id(self, note_id: str) -> Note | None:
         """Return a single note by ID, or None if not found."""
@@ -39,7 +39,8 @@ class NoteStore:
     def add(self, *, id: str | None = None, text: str, color: str = "yellow",
             pinned: bool = False, width: int = 200, height: int = 100,
             content: str = "", always_on_top: bool = False,
-            links: list | None = None, tags: list | None = None) -> Note:
+            links: list | None = None, tags: list | None = None,
+            order: int = 0) -> Note:
         notes = self.all()
         new_note = Note(
             id=id or str(uuid.uuid4()),
@@ -51,6 +52,7 @@ class NoteStore:
             content=content,
             always_on_top=always_on_top,
         )
+        new_note.order = order if order else len(notes)
         # Auto-parse [[id]] links from text
         if links is not None:
             new_note.links = list(links)
@@ -90,7 +92,8 @@ class NoteStore:
     def _write(self, notes: list[Note]) -> None:
         data = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned,
                  "width": n.width, "height": n.height, "content": n.content,
-                 "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags}
+                 "always_on_top": n.always_on_top, "links": n.links, "tags": n.tags,
+                 "order": n.order}
                 for n in notes]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -146,6 +149,30 @@ class NoteStore:
             if n.id == note_id:
                 n.always_on_top = not n.always_on_top
                 break
+        self._write(notes)
+
+    def move_note(self, note_id: str, new_position: int) -> None:
+        """Move a note to a new position, shifting other notes' orders."""
+        notes = self.all()
+        # Find the note and its current order
+        target = None
+        for n in notes:
+            if n.id == note_id:
+                target = n
+                break
+        if target is None:
+            return
+
+        old_order = target.order
+        notes.remove(target)
+
+        # Insert at the new position
+        target.order = new_position
+        notes.insert(new_position, target)
+
+        # Reassign orders to maintain sequential positions
+        for i, n in enumerate(notes):
+            n.order = i
         self._write(notes)
 
     def backlinks(self, note_id: str) -> list[Note]:
