@@ -34,6 +34,15 @@ class NotesApp:
         self._create_context_menu()
         self._focus_note_id = None
 
+        # Templates — Tier A
+        self.templates = {
+            "shopping": "🛒 Shopping List\n\n- [ ] \n- [ ] \n- [ ] ",
+            "todo": "✅ TODO\n\n- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3",
+            "journal": "📔 Daily Journal\n\n## Gratitude\n\n## Wins\n\n## Challenges\n\n## Tomorrow",
+            "meeting": "👥 Meeting Notes\n\n**Attendees:**\n\n**Agenda:**\n\n**Decisions:**\n\n**Action Items:**",
+            "brainstorm": "💡 Brainstorm\n\n## Problem\n\n## Ideas\n\n1. \n2. \n3. \n\n## Best Solutions"
+        }
+
     def create_daily_note(self) -> None:
         """Create or focus a daily note for today."""
         from datetime import date
@@ -131,6 +140,18 @@ class NotesApp:
         font_size_select.config(font=("Segoe UI", 8), width=8, relief="flat",
                                 bg="#ffffff", activebackground="#f0f0f0")
         font_size_select.pack(side="right", padx=(0, 8))
+
+        # Templates button — Tier A
+        tk.Button(self.toolbar, text="📋",
+                  command=self.show_templates_menu,
+                  font=("Segoe UI", 10), width=3,
+                  relief="flat", bg="#ffffff").pack(side="right", padx=(0, 4))
+
+        # Graph view button — Tier C
+        tk.Button(self.toolbar, text="🔗",
+                  command=self.show_graph_view,
+                  font=("Segoe UI", 10), width=3,
+                  relief="flat", bg="#ffffff").pack(side="right", padx=(0, 4))
 
         # Sync toggle button
         self.sync_btn = tk.Button(self.toolbar, text="☁️ Sync",
@@ -297,7 +318,32 @@ class NotesApp:
     def set_font_size(self, size: str) -> None:
         """Set the global font size for note text."""
         self._font_size = size
+        self._font_size_num = int(size.replace("px", ""))
         self._refresh()
+
+    def show_templates_menu(self) -> None:
+        """Show a menu of templates to apply."""
+        menu = tk.Menu(self.root, tearoff=0, font=("Segoe UI", 9))
+        menu.add_command(label="🛒 Shopping List",
+                         command=lambda: self.apply_template("shopping"))
+        menu.add_command(label="✅ TODO",
+                         command=lambda: self.apply_template("todo"))
+        menu.add_command(label="📔 Daily Journal",
+                         command=lambda: self.apply_template("journal"))
+        menu.add_command(label="👥 Meeting Notes",
+                         command=lambda: self.apply_template("meeting"))
+        menu.add_command(label="💡 Brainstorm",
+                         command=lambda: self.apply_template("brainstorm"))
+        menu.tk_popup(100, 100)
+
+    def apply_template(self, template_name: str) -> None:
+        """Add a new note from a template."""
+        content = self.templates.get(template_name, "")
+        if content:
+            self.store.add(text=f"{template_name} note",
+                           color=self.current_color,
+                           content=content, tags=[template_name])
+            self._refresh()
 
     def apply_search(self) -> None:
         query = self.search_var.get().strip()
@@ -486,8 +532,114 @@ class NotesApp:
             sync = GitSync(sync_dir, self.store)
             sync.push()
             self._refresh()
-        except Exception as e:
+        except Exception:
             pass
+
+    # ===== Graph View (Tier C) =====
+
+    def get_graph_data(self) -> dict:
+        """Return note connection data for graph visualization."""
+        notes = self.store.all()
+        nodes = [{"id": n.id, "text": n.text, "color": n.color, "pinned": n.pinned}
+                 for n in notes]
+        links = []
+        for n in notes:
+            for link_id in (n.links or []):
+                links.append({"source": n.id, "target": link_id})
+        return {"nodes": nodes, "links": links}
+
+    def show_graph_view(self) -> tk.Toplevel:
+        """Open a graph view window showing note connections."""
+        graph_win = tk.Toplevel(self.root)
+        graph_win.title("Graph View")
+        graph_win.geometry("600x500")
+        graph_win.configure(bg="#2b2b2b" if self.dark_mode else "#f8fafc")
+
+        graph_data = self.get_graph_data()
+        canvas = tk.Canvas(graph_win, bg="#2b2b2b" if self.dark_mode else "#f8fafc",
+                           highlightthickness=0)
+        canvas.pack(fill="both", expand=True, padx=16, pady=16)
+
+        if not graph_data["nodes"]:
+            canvas.create_text(300, 250, text="No connections to show",
+                               fill="#999" if not self.dark_mode else "#666",
+                               font=("Segoe UI", 12))
+            return graph_win
+
+        # Draw nodes in a circle
+        import math
+        nodes = graph_data["nodes"]
+        n = len(nodes)
+        radius = min(200, 50 * n)
+        cx, cy = 300, 250
+
+        node_positions = {}
+        for i, node in enumerate(nodes):
+            angle = (2 * math.pi * i / n) if n > 1 else 0
+            x = cx + radius * math.cos(angle)
+            y = cy + radius * math.sin(angle)
+            node_positions[node["id"]] = (x, y)
+
+            # Draw node circle
+            color = NOTE_COLORS.get(node["color"], NOTE_COLORS["yellow"])
+            canvas.create_oval(x - 20, y - 20, x + 20, y + 20,
+                               fill=color, outline="#3b82f6" if node["pinned"] else "#cccccc",
+                               width=2)
+            # Draw label
+            label_text = node["text"][:20]
+            canvas.create_text(x, y + 35, text=label_text,
+                               fill="#1e293b" if not self.dark_mode else "#e2e8f0",
+                               font=("Segoe UI", 9))
+
+        # Draw links
+        for link in graph_data["links"]:
+            if link["source"] in node_positions and link["target"] in node_positions:
+                x1, y1 = node_positions[link["source"]]
+                x2, y2 = node_positions[link["target"]]
+                canvas.create_line(x1, y1, x2, y2,
+                                   fill="#3b82f6", width=2, arrow=tk.LAST)
+
+        return graph_win
+
+    # ===== AI Suggestions (Tier C) =====
+
+    def suggest_tags(self, content: str) -> list[str]:
+        """Suggest tags based on content keywords."""
+        tag_map = {
+            "urgent": ["urgent", "asap", "important", "deadline"],
+            "todo": ["todo", "task", "action", "need to", "to-do"],
+            "idea": ["idea", "brainstorm", "maybe", "could", "suggestion"],
+            "meeting": ["meeting", "discuss", "call", "sync", "agenda"],
+            "personal": ["personal", "family", "fyi", "reminder", "remember"],
+            "work": ["work", "job", "project", "task", "meeting"],
+            "health": ["health", "workout", "exercise", "diet", "medicine"],
+        }
+        suggested = []
+        content_lower = content.lower()
+        for tag, keywords in tag_map.items():
+            if any(kw in content_lower for kw in keywords):
+                suggested.append(tag)
+        return list(set(suggested))
+
+    def suggest_links(self, note_id: str) -> list[str]:
+        """Suggest related notes to link to based on tag/content overlap."""
+        note = self.store.all_for_id(note_id)
+        if not note:
+            return []
+        candidates = []
+        for n in self.store.all():
+            if n.id == note_id:
+                continue
+            # Tag overlap
+            tag_overlap = bool(note.tags) and bool(n.tags) and \
+                          len(set(note.tags) & set(n.tags)) > 0
+            # Content keyword overlap (simple)
+            content_words = set(note.content.lower().split())
+            n_content_words = set(n.content.lower().split())
+            word_overlap = len(content_words & n_content_words) > 3
+            if tag_overlap or word_overlap:
+                candidates.append(n.id)
+        return candidates
 
     def note_count(self) -> int:
         return len(self.store.all())

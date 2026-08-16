@@ -681,6 +681,97 @@ def test_app_has_move_note_method(tmp_path: Path, tk_root):
     assert app.store.all()[0].id == "2"
 
 
+# ---- Templates tests (Tier A) ----
+
+def test_app_has_templates(tmp_path: Path, tk_root):
+    """App should have templates attribute."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "templates")
+    assert "shopping" in app.templates
+    assert "todo" in app.templates
+    assert "journal" in app.templates
+    assert "meeting" in app.templates
+    assert "brainstorm" in app.templates
+
+
+def test_apply_template_creates_note(tmp_path: Path, tk_root):
+    """Applying a template should create a new note with template content."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    app.apply_template("todo")
+    assert app.note_count() == 1
+    note = app.store.all()[0]
+    assert "Task 1" in note.content
+    assert "todo" in note.tags
+
+
+def test_apply_template_shopping(tmp_path: Path, tk_root):
+    """Shopping template should create a checklist note."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    app.apply_template("shopping")
+    note = app.store.all()[0]
+    assert "Shopping List" in note.content
+    assert "shopping" in note.tags
+
+
+# ---- Graph view tests (Tier C) ----
+
+def test_app_has_graph_data_method(tmp_path: Path, tk_root):
+    """App should have get_graph_data for graph visualization."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="A", text="note A", color="yellow", links=["B"])
+    store.add(id="B", text="note B", color="pink")
+    graph = app.get_graph_data()
+    assert "nodes" in graph
+    assert "links" in graph
+    assert len(graph["nodes"]) == 2
+    assert len(graph["links"]) == 1
+    assert graph["links"][0]["source"] == "A"
+    assert graph["links"][0]["target"] == "B"
+
+
+def test_app_has_show_graph_view(tmp_path: Path, tk_root):
+    """App should have show_graph_view method."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    assert hasattr(app, "show_graph_view")
+
+
+# ---- AI suggestions tests (Tier C) ----
+
+def test_suggest_tags_from_content(tmp_path: Path, tk_root):
+    """suggest_tags should return matching tags for content keywords."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    tags = app.suggest_tags("urgent task meeting")
+    assert "urgent" in tags
+    assert "todo" in tags
+    assert "meeting" in tags
+
+
+def test_suggest_tags_no_match(tmp_path: Path, tk_root):
+    """suggest_tags should return empty for no keyword matches."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    tags = app.suggest_tags("random text with no keywords")
+    assert len(tags) == 0
+
+
+def test_suggest_links_by_tag(tmp_path: Path, tk_root):
+    """suggest_links should find notes with overlapping tags."""
+    store = NoteStore(tmp_path / "notes.json")
+    app = NotesApp(store=store, root=tk_root)
+    store.add(id="A", text="task one", color="yellow", tags=["work", "todo"],
+              content="This is a work task about projects and deadlines")
+    store.add(id="B", text="task two", color="pink", tags=["work"],
+              content="Another work task about projects and deadlines and more")
+    suggestions = app.suggest_links("A")
+    assert "B" in suggestions
+
+
 # ---- Context menu tests ----
 
 def test_app_has_context_menu(tmp_path: Path, tk_root):
