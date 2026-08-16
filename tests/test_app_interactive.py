@@ -478,3 +478,47 @@ def test_export_to_markdown_file(tmp_path: Path):
     assert out.exists()
     content = out.read_text(encoding="utf-8")
     assert "# hello" in content
+
+
+# ---- Sync tests ----
+
+def test_git_sync_push_creates_repo(tmp_path: Path):
+    """GitSync should initialize a git repo and push notes."""
+    from sticky_notes.sync import GitSync
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="synced note", color="yellow")
+    git_dir = tmp_path / "sync_repo"
+    sync = GitSync(git_dir, store)
+    sync.push()
+    assert (git_dir / ".git").exists()
+    files = list(git_dir.rglob("*.json"))
+    assert len(files) >= 1
+
+
+def test_git_sync_pull_gets_updates(tmp_path: Path):
+    """GitSync should pull notes from the sync repo into the store."""
+    from sticky_notes.sync import GitSync
+    git_dir = tmp_path / "sync_repo"
+    store = NoteStore(tmp_path / "notes.json")
+    store.add(id="1", text="local note", color="yellow")
+    sync = GitSync(git_dir, store)
+    sync.push()
+    # Modify store locally, then pull to get remote state
+    store.add(id="2", text="should be overwritten", color="pink")
+    sync.pull()
+    notes = store.all()
+    ids = {n.id for n in notes}
+    assert "1" in ids
+    assert "2" not in ids  # local change overwritten by remote
+    assert len(notes) == 1
+
+
+def test_sync_backend_is_abstract():
+    """SyncBackend should be an abstract base class."""
+    from sticky_notes.sync import SyncBackend
+    from pathlib import Path
+    try:
+        SyncBackend(Path("/tmp"))
+        assert False, "Should not be able to instantiate abstract class"
+    except TypeError:
+        pass
